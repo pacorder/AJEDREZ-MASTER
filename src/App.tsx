@@ -35,21 +35,39 @@ export default function App() {
   const [showHint, setShowHint] = useState(false);
   const [threats, setThreats] = useState<string[]>([]);
   const [mode, setMode] = useState<'training' | 'simulation' | 'analysis'>('training');
-  const [view, setView] = useState<'game' | 'blog' | 'about'>('game');
   const [pgnInput, setPgnInput] = useState('');
   const [fullHistory, setFullHistory] = useState<string[]>([]);
   const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>('white');
   const [isThinking, setIsThinking] = useState(false);
   const [engineSuggestion, setEngineSuggestion] = useState<{ evaluation: string, bestMove: string } | null>(null);
+  // Estado para el Worker de Stockfish y su disponibilidad
+  const [stockfishWorker, setStockfishWorker] = useState<Worker | null>(null);
+  const [engineReady, setEngineReady] = useState(false);
 
-  // Inicializar Worker de Stockfish (CDN)
-  const stockfishWorker = useMemo(() => {
-    try {
-      return new Worker('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js');
-    } catch (e) {
-      console.error("Error al cargar Stockfish", e);
-      return null;
-    }
+  // Inicializar Worker de Stockfish con técnica de Blob para evitar CORS
+  useEffect(() => {
+    let worker: Worker | null = null;
+    const initStockfish = async () => {
+      try {
+        const response = await fetch('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js');
+        const script = await response.text();
+        const blob = new Blob([script], { type: 'application/javascript' });
+        worker = new Worker(URL.createObjectURL(blob));
+        
+        worker.onmessage = (e) => {
+          if (e.data === 'readyok') setEngineReady(true);
+        };
+        
+        worker.postMessage('uci');
+        worker.postMessage('isready');
+        setStockfishWorker(worker);
+      } catch (e) {
+        console.error("Error crítico al inicializar Stockfish:", e);
+      }
+    };
+
+    initStockfish();
+    return () => worker?.terminate();
   }, []);
 
   const getEngineAdvice = useCallback(() => {
@@ -58,35 +76,43 @@ export default function App() {
     setIsThinking(true);
     setEngineSuggestion(null);
 
-    // Configurar listener para recibir la mejor jugada
     stockfishWorker.onmessage = (event: MessageEvent) => {
       const line = event.data;
       
-      // La evaluación suele venir en líneas con 'score cp' o 'score mate'
-      // La mejor jugada viene en 'bestmove'
       if (line.includes('bestmove')) {
         const parts = line.split(' ');
         const bestMove = parts[1];
         setEngineSuggestion(prev => ({ 
-          evaluation: prev?.evaluation || 'Análisis',
+          evaluation: prev?.evaluation || '0.00',
           bestMove 
         }));
         setIsThinking(false);
       }
       
       if (line.includes('score cp')) {
-        const cp = line.split('score cp ')[1].split(' ')[0];
-        const evaluation = (parseInt(cp) / 100).toFixed(2);
-        setEngineSuggestion(prev => ({ 
-          ...prev, 
-          evaluation: (parseFloat(evaluation) > 0 ? '+' : '') + evaluation,
-          bestMove: prev?.bestMove || ''
-        }));
+        const cpMatch = line.match(/score cp (-?\d+)/);
+        if (cpMatch) {
+          const cp = parseInt(cpMatch[1]);
+          const evaluation = (cp / 100).toFixed(2);
+          setEngineSuggestion(prev => ({ 
+            ...prev, 
+            evaluation: (cp > 0 ? '+' : '') + evaluation,
+            bestMove: prev?.bestMove || ''
+          }));
+        }
+      } else if (line.includes('score mate')) {
+        const mateMatch = line.match(/score mate (-?\d+)/);
+        if (mateMatch) {
+          setEngineSuggestion(prev => ({
+            ...prev,
+            evaluation: `M${mateMatch[1]}`,
+            bestMove: prev?.bestMove || ''
+          }));
+        }
       }
     };
 
-    // Comandos UCI para Stockfish
-    stockfishWorker.postMessage('uci');
+    stockfishWorker.postMessage('ucinewgame');
     stockfishWorker.postMessage(`position fen ${game.fen()}`);
     stockfishWorker.postMessage('go depth 12');
   }, [stockfishWorker, game]);
@@ -316,50 +342,38 @@ export default function App() {
       {/* Header Navigation */}
       <header className="h-16 border-b border-white/10 flex items-center justify-between px-8 bg-[#0F0F12] flex-shrink-0 z-50 shadow-2xl">
         <div className="flex items-center gap-4">
-          <div className="w-8 h-8 bg-gradient-to-tr from-[#D4AF37] to-[#8C6E2D] rounded-sm flex items-center justify-center shadow-lg shadow-amber-900/40 cursor-pointer" onClick={() => setView('game')}>
+          <div className="w-8 h-8 bg-gradient-to-tr from-[#D4AF37] to-[#8C6E2D] rounded-sm flex items-center justify-center shadow-lg shadow-amber-900/40">
             <Brain className="w-5 h-5 text-black" />
           </div>
-          <h1 className="text-xl font-serif italic tracking-wide text-white cursor-pointer" onClick={() => setView('game')}>Ajedrez Master</h1>
+          <h1 className="text-xl font-serif italic tracking-wide text-white">Ajedrez Master</h1>
         </div>
         <nav className="hidden md:flex gap-8 text-[10px] uppercase tracking-[0.2em] font-medium text-white/60">
           <button 
-            onClick={() => { setView('game'); setMode('training'); }}
-            className={cn("transition-colors", view === 'game' && mode === 'training' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
+            onClick={() => { setMode('training'); }}
+            className={cn("transition-colors", mode === 'training' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
           >
             APERTURAS
           </button>
           <button 
              onClick={() => {
-               setView('game');
                setMode('simulation');
                if (selectedOpening) setSelectedOpening(null);
              }}
-             className={cn("transition-colors", view === 'game' && mode === 'simulation' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
+             className={cn("transition-colors", mode === 'simulation' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
           >
             Simulación
           </button>
           <button 
             onClick={() => {
-              setView('game');
               setMode('analysis');
               if (selectedOpening) setSelectedOpening(null);
             }}
-            className={cn("transition-colors", view === 'game' && mode === 'analysis' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
+            className={cn("transition-colors", mode === 'analysis' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
           >
             Análisis
           </button>
-          <button 
-            onClick={() => setView('blog')}
-            className={cn("transition-colors", view === 'blog' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
-          >
-            Blog
-          </button>
-          <button 
-            onClick={() => setView('about')}
-            className={cn("transition-colors", view === 'about' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
-          >
-            Quienes Somos
-          </button>
+          <a href="/blog.html" className="hover:text-[#D4AF37] transition-colors leading-none pt-1">Blog</a>
+          <a href="/quienes-somos.html" className="hover:text-[#D4AF37] transition-colors leading-none pt-1">Nosotros</a>
         </nav>
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
@@ -376,10 +390,8 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex overflow-hidden">
-        {view === 'game' ? (
-          <>
-            {/* Sidebar: Repertoire Selection */}
-            <aside className="w-72 border-r border-white/10 bg-[#0C0C0E] flex flex-col flex-shrink-0">
+        {/* Sidebar: Repertoire Selection */}
+        <aside className="w-72 border-r border-white/10 bg-[#0C0C0E] flex flex-col flex-shrink-0">
           <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
             {mode === 'analysis' ? (
               <div className="space-y-4">
@@ -723,12 +735,12 @@ export default function App() {
                 <div className="h-full flex flex-col items-center justify-center text-center px-4 gap-4">
                   <Info className="w-8 h-8 opacity-20" />
                   <p className="italic">Utilice el tablero para practicar sus aperturas y mejorar su visión estratégica.</p>
-                  <button 
-                    onClick={() => setView('about')}
+                  <a 
+                    href="/quienes-somos.html"
                     className="text-[10px] text-[#D4AF37] uppercase tracking-widest hover:underline"
                   >
                     Saber más sobre nosotros
-                  </button>
+                  </a>
                 </div>
               </div>
             </div>
@@ -746,119 +758,7 @@ export default function App() {
             </div>
           </div>
         </aside>
-      </>
-    ) : view === 'blog' ? (
-      <section className="flex-1 overflow-y-auto bg-[#08080A] p-12 custom-scrollbar">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-4xl font-serif italic text-[#D4AF37] mb-8">Blog de Ajedrez Master</h2>
-          <div className="space-y-12">
-            <article className="border-b border-white/10 pb-12">
-              <h3 className="text-2xl font-serif text-white mb-4">La Evolución del Ajedrez en la Era Digital</h3>
-              <p className="text-white/60 leading-relaxed mb-6">
-                Desde la legendaria victoria de Deep Blue sobre Garry Kasparov en 1997, el mundo del ajedrez ha experimentado una transformación sin precedentes impulsada por la tecnología. Hoy en día, contamos con herramientas que nos permiten entender el juego con una precisión sobrehumana. En Ajedrez Master, integramos estas herramientas para potenciar el pensamiento crítico de nuestros usuarios.
-              </p>
-              <p className="text-white/60 leading-relaxed mb-6">
-                El análisis moderno ya no se limita a ver quién tiene una ventaja material de +1.5. Los motores actuales, como el que utilizamos basado en la arquitectura de Stockfish, nos permiten explorar sutilezas posicionales que antes pasaban desapercibidas. Por ejemplo, la comprensión del espacio en el tablero y la coordinación de las piezas a largo plazo son aspectos que las versiones anteriores de los motores solían subestimar. Hoy en día, un jugador puede recibir una sugerencia que parece contraintuitiva —como sacrificar un peón por una compensación posicional abstracta— y ver cómo esa decisión se justifica a lo largo de 20 movimientos perfectos.
-              </p>
-              <p className="text-white/60 leading-relaxed mb-6">
-                Sin embargo, el mayor desafío para el jugador aficionado sigue siendo la traducción de estos datos numéricos en conocimiento práctico. Aquí es donde Ajedrez Master marca la diferencia. Nuestro sistema no solo te da el movimiento óptimo, sino que intenta explicar el "porqué" detrás de la jugada. Aprender a interpretar la evaluación del motor es una habilidad en sí misma. ¿Es un +0.8 porque tenemos un ataque ganador o simplemente porque nuestro oponente tiene un peón aislado que tardaremos 50 movimientos en capturar? Distinguir estas situaciones es vital para la progresión real de cualquier ajedrecista.
-              </p>
-              <p className="text-white/60 leading-relaxed mb-6">
-                Además, el uso de la IA ha democratizado el acceso a la élite del entrenamiento. Antiguamente, solo los grandes maestros con acceso a equipos potentes y segundos talentosos podían prepararse al más alto nivel. Hoy, cualquier usuario con una conexión a internet y nuestra plataforma puede disfrutar de un sparring virtual que no se cansa, no comete errores por fatiga y está siempre disponible para discutir las líneas más complejas de la Ruy López o la Siciliana Najdorf.
-              </p>
-              <p className="text-white/60 leading-relaxed mb-6">
-                En conclusión, estamos viviendo la era dorada del estudio del ajedrez. La integración de la inteligencia artificial en nuestra rutina de entrenamiento nos permite identificar nuestras debilidades más profundas y explorar la belleza del juego desde ángulos que antes solo estaban reservados para los campeones del mundo. En Ajedrez Master, nuestra misión es seguir refinando estas herramientas para que cada jugador, sea cual sea su nivel, pueda alcanzar su máximo potencial y disfrutar de la profundidad infinita de este noble juego.
-              </p>
-            </article>
-
-            <article className="pb-12 border-b border-white/10">
-              <h3 className="text-2xl font-serif text-white mb-4">Estrategias Críticas para el Dominio de las Aperturas</h3>
-              <p className="text-white/60 leading-relaxed mb-6">
-                Memorizar movimientos de apertura es una de las tareas más arduas y, a menudo, frustrantes para los jugadores en ascenso. Muchos cometen el error de intentar aprender líneas interminables de memoria sin comprender los conceptos estratégicos subyacentes. En este artículo, exploraremos por qué el enfoque de Ajedrez Master se centra en la memorización activa y la comprensión táctica, lo que garantiza que no te quedes "fuera de libro" sin saber qué hacer en el movimiento 10.
-              </p>
-              <p className="text-white/60 leading-relaxed mb-6">
-                La primera regla de oro para estudiar aperturas es entender los planes típicos del medio juego que resultan de ellas. Si estás jugando una Apertura Italiana, debes estar familiarizado con las maniobras del caballo a f5 o d5, y con las rupturas centrales d3-d4. Si simplemente memorizas que d3 es mejor que d4 en cierta posición, pero no sabes por qué, perderás el hilo en cuanto tu oponente se desvíe de la teoría principal. Nuestra plataforma te guía a través de estas secuencias, reforzando la trayectoria correcta a través de la repetición y el feedback instantáneo.
-              </p>
-              <p className="text-white/60 leading-relaxed mb-6">
-                Otro aspecto fundamental es el manejo de la tensión central. En muchas aperturas modernas, como las defensas indias o la Grünfeld, el centro no se ocupa inmediatamente con peones, sino que se controla a distancia con piezas. Entender cuándo es el momento preciso para golpear el centro es la diferencia entre una victoria brillante y un colapso posicional. A través de nuestro módulo de simulación, puedes probar diferentes expansiones centrales y ver cómo reacciona el motor de Stockfish, aprendiendo por ensayo y error en un entorno seguro antes de llevar esas ideas al tablero de competición real.
-              </p>
-              <p className="text-white/60 leading-relaxed mb-6">
-                La psicología también juega un papel crucial en la selección de tu repertorio. ¿Eres un jugador que prefiere posiciones sólidas y tranquilas, o te sientes más cómodo en el caos táctico? Un buen repertorio debe estar alineado con tu estilo personal. En Ajedrez Master, ofrecemos una variedad de aperturas que van desde lo ultra-sólido hasta lo agresivo. Al practicar con nuestro entrenador, no solo memorizas jugadas, sino que desarrollas una "intuición" para el tipo de posiciones que prefieres jugar, lo que aumenta tu confianza durante la partida.
-              </p>
-              <p className="text-white/60 leading-relaxed mb-6">
-                Finalmente, es esencial mantenerse actualizado. La teoría del ajedrez nunca se detiene; lo que era una línea ganadora hace dos años puede haber sido refutado por un nuevo descubrimiento de la IA hoy. Por eso, el análisis constante de tus propias partidas es vital. Al cargar tus PGN en nuestro módulo de análisis, puedes comparar tus decisiones con las sugerencias teóricas actuales, ajustando tu repertorio de manera dinámica. Este ciclo de práctica, análisis y ajuste es la única vía garantizada hacia la maestría en el ajedrez.
-              </p>
-            </article>
-
-            <article className="pb-12">
-                <h3 className="text-2xl font-serif text-white mb-4">El Ajedrez como Herramienta de Crecimiento Cognitivo</h3>
-                <p className="text-white/60 leading-relaxed mb-6">
-                    El ajedrez no es solo un juego; es una disciplina que moldea la mente. Diversos estudios han demostrado que la práctica regular del ajedrez mejora la memoria, la concentración y la capacidad de resolución de problemas. En Ajedrez Master, entendemos que cada partida es una oportunidad para entrenar el cerebro. La toma de decisiones bajo presión, el pensamiento estratégico a largo plazo y la capacidad de prever las intenciones del oponente son habilidades transferibles a la vida cotidiana y profesional.
-                </p>
-                <p className="text-white/60 leading-relaxed mb-6">
-                    Al enfrentarnos a un tablero de ajedrez, nos vemos obligados a gestionar recursos limitados y a evaluar riesgos constantemente. Esta "gestión del caos" es fundamental en el mundo moderno. Los jugadores que utilizan nuestra plataforma reportan una mayor agilidad mental en sus tareas diarias. El ajedrez nos enseña a ser pacientes, a esperar el momento oportuno y a no dejarnos llevar por impulsos que puedan comprometer nuestra posición global.
-                </p>
-                <p className="text-white/60 leading-relaxed mb-6">
-                    Además, el ajedrez fomenta la resiliencia. Aprender a perder, a analizar los errores sin juicios destructivos y a levantarse para la siguiente partida es una de las lecciones más valiosas que este juego puede ofrecer. En Ajedrez Master, promovemos esta mentalidad de crecimiento. Cada error detectado por Stockfish es una pepita de oro que nos indica exactamente dónde debemos mejorar. No hay fracaso en el ajedrez, solo aprendizaje acumulado.
-                </p>
-                <p className="text-white/60 leading-relaxed mb-6">
-                    A medida que profundizamos en el estudio de las estructuras de peones y las sutilezas de los finales, nuestra capacidad de abstracción se expande. Empezamos a ver patrones donde antes solo había piezas dispersas. Esta visión sistémica es lo que diferencia a un aficionado de un maestro. En Ajedrez Master, te ayudamos a desarrollar este "tercer ojo" ajedrecístico, proporcionándote las herramientas necesarias para que tu mente trabaje de manera más eficiente y creativa.
-                </p>
-            </article>
-          </div>
-        </div>
-      </section>
-    ) : (
-      <section className="flex-1 overflow-y-auto bg-[#08080A] p-12 custom-scrollbar">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-4xl font-serif italic text-[#D4AF37] mb-8">Quienes Somos: Ajedrez Master</h2>
-          <div className="space-y-8 text-white/70 leading-[1.8] text-lg font-serif">
-            <p>
-              Bienvenidos a Ajedrez Master, la plataforma definitiva diseñada por y para apasionados del ajedrez que buscan llevar su juego al siguiente nivel mediante la tecnología de vanguardia. Nuestra misión es simple pero ambiciosa: transformar la manera en que los jugadores de todos los niveles estudian, practican y comprenden los secretos del tablero. En un mundo donde la información es abundante pero el tiempo es escaso, hemos creado una herramienta que destila la complejidad del ajedrez en un sistema de aprendizaje intuitivo, potente y estéticamente refinado.
-            </p>
-            <p>
-              Fundada por un equipo multidisciplinar de maestros de ajedrez, ingenieros de software y expertos en inteligencia artificial, Ajedrez Master nació de la necesidad de cerrar la brecha entre el estudio teórico abstracto y la práctica competitiva real. Observamos que muchos jugadores invertirían horas en libros de aperturas sin ver resultados tangibles debido a la falta de un entorno de entrenamiento interactivo. Así, decidimos construir una plataforma que no solo ofrece información, sino que obliga al usuario a participar activamente en el proceso de toma de decisiones, reforzando la memoria muscular y la visión táctica en cada clic.
-            </p>
-            <p>
-              Nuestra filosofía se basa en tres pilares fundamentales: Innovación, Accesibilidad y Excelencia. Creemos que la inteligencia artificial no debe ser solo un oráculo que dicta sentencias, sino un mentor que ilumina el camino. Por ello, hemos integrado motores de análisis de clase mundial como Stockfish para proporcionar evaluaciones instantáneas y precisas, pero siempre acompañadas de explicaciones que ayudan a construir una comprensión estratégica profunda. Queremos que entiendas el juego, no que lo imites.
-            </p>
-            <p>
-              En nuestra sección de "Aperturas", hemos seleccionado cuidadosamente los sistemas más efectivos del ajedrez moderno, permitiendo a nuestros usuarios construir un repertorio sólido y flexible. Nuestro módulo de "Simulación" permite experimentar libremente con ideas nuevas contra un oponente virtual implacable, mientras que el módulo de "Análisis" ofrece la capacidad técnica de diseccionar partidas propias paso a paso para identificar errores y oportunidades perdidas. Todo esto se presenta en una interfaz oscura y minimalista, diseñada para minimizar las distracciones y permitir que el usuario se sumerja completamente en el flujo del juego.
-            </p>
-            <p>
-              Con sede en Santiago de Chile y con una comunidad que crece día a día en toda Hispanoamérica, Ajedrez Master no es solo una aplicación, es un ecosistema para el crecimiento intelectual. Nos enorgullece ver cómo nuestros usuarios pasan de la duda a la determinación, ganando confianza partida tras partida. Nos esforzamos constantemente por actualizar nuestros algoritmos y expandir nuestra biblioteca de contenidos para asegurar que nuestra comunidad siempre tenga acceso a las mejores herramientas disponibles en el mercado global.
-            </p>
-            <p>
-              Gracias por confiar en nosotros para ser parte de tu viaje ajedrecístico. Ya seas un principiante dando sus primeros pasos o un jugador de club buscando tu próximo título, estamos aquí para asegurarnos de que cada movimiento que hagas sea un movimiento maestro. Te invitamos a explorar todas nuestras funciones, leer nuestro blog para estar al tanto de las últimas tendencias y, sobre todo, a disfrutar de la inmensa satisfacción que produce ver cómo tu comprensión del ajedrez se expande hasta límites que nunca imaginaste. ¡Que empiece la partida!
-            </p>
-            <p>
-                Además de nuestras herramientas técnicas, en Ajedrez Master valoramos la historia y la cultura del ajedrez. Creemos que conocer las partidas clásicas de los grandes campeones del pasado, desde Morphy hasta Carlsen, es esencial para forjar un carácter ajedrecístico sólido. Por eso, integramos constantes referencias históricas en nuestro blog y análisis. No solo queremos que seas un mejor jugador táctico, sino un conocedor profundo de la belleza artística que reside en cada combinación brillante.
-            </p>
-            <p>
-                Nuestro compromiso con la transparencia y la mejora continua nos lleva a escuchar activamente a nuestra comunidad. Cada sugerencia de nuestros usuarios es evaluada para futuras actualizaciones. En Ajedrez Master, el camino hacia la perfección no tiene fin, al igual que las posibilidades infinitas del ajedrez. Estamos emocionados de tenerte con nosotros en esta aventura intelectual y deportiva.
-            </p>
-          </div>
-          <div className="mt-16 grid grid-cols-3 gap-8 pb-12">
-            <div className="bg-white/5 p-6 border border-white/10 rounded-sm text-center">
-              <Trophy className="w-8 h-8 text-[#D4AF37] mx-auto mb-4" />
-              <h4 className="text-white font-bold mb-2 text-sm uppercase tracking-wider">Excelencia</h4>
-              <p className="text-[10px] text-white/40 uppercase leading-relaxed">Comprometidos con los más altos estándares tácticos.</p>
-            </div>
-            <div className="bg-white/5 p-6 border border-white/10 rounded-sm text-center">
-              <Brain className="w-8 h-8 text-[#D4AF37] mx-auto mb-4" />
-              <h4 className="text-white font-bold mb-2 text-sm uppercase tracking-wider">Entrenamiento</h4>
-              <p className="text-[10px] text-white/40 uppercase leading-relaxed">Metodologías avanzadas de estudio a tu servicio.</p>
-            </div>
-            <div className="bg-white/5 p-6 border border-white/10 rounded-sm text-center">
-              <CheckCircle2 className="w-8 h-8 text-[#D4AF37] mx-auto mb-4" />
-              <h4 className="text-white font-bold mb-2 text-sm uppercase tracking-wider">Comunidad</h4>
-              <p className="text-[10px] text-white/40 uppercase leading-relaxed">Miles de jugadores mejorando juntos cada día.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    )}
-  </main>
+      </main>
 
       {/* Bottom Status Bar */}
       <footer className="h-8 bg-[#0F0F12] border-t border-white/10 flex items-center justify-between px-8 text-[9px] uppercase tracking-[0.2em] flex-shrink-0">

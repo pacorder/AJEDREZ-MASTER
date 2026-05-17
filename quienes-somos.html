@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quienes Somos - Ajedrez Master</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0A0A0C;
+            --bg-accent: #0F0F12;
+            --text: #E0E0E0;
+            --text-muted: rgba(255, 255, 255, 0.6);
+            --gold: #D4AF37;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            height: 64px;
+            border-bottom: 1px solid var(--border);
+            background-color: var(--bg-accent);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: white;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(45deg, var(--gold), #8C6E2D);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+        }
+
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: 20px;
+        }
+
+        nav {
+            display: flex;
+            gap: 32px;
+        }
+
+        nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        nav a:hover, nav a.active {
+            color: var(--gold);
+        }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 48px 24px;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            color: var(--gold);
+            font-size: 48px;
+            margin-bottom: 48px;
+        }
+
+        .content {
+            font-family: 'Playfair Display', serif;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 18px;
+            line-height: 1.8;
+            margin-bottom: 48px;
+        }
+
+        .content p {
+            margin-bottom: 32px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+            margin-top: 64px;
+            padding-bottom: 48px;
+        }
+
+        .stat-card {
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 24px;
+            border: 1px solid var(--border);
+            border-radius: 2px;
+            text-align: center;
+        }
+
+        .stat-icon {
+            width: 32px;
+            height: 32px;
+            color: var(--gold);
+            margin: 0 auto 16px;
+        }
+
+        .stat-title {
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 14px;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+        }
+
+        .stat-desc {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        footer {
+            height: 32px;
+            background-color: var(--bg-accent);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/" class="logo">
+            <div class="logo-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-4.96 2.5 2.5 0 0 1 2.76-3.9 2.5 2.5 0 0 1 3-3.04 2.5 2.5 0 0 1 .52.04Z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-4.96 2.5 2.5 0 0 0-2.76-3.9 2.5 2.5 0 0 0-3-3.04 2.5 2.5 0 0 0-.52.04Z"></path></svg>
+            </div>
+            <span class="logo-text">Ajedrez Master</span>
+        </a>
+        <nav>
+            <a href="/">Aperturas</a>
+            <a href="/blog.html">Blog</a>
+            <a href="/quienes-somos.html" class="active">Quienes Somos</a>
+        </nav>
+    </header>
+
+    <main>
+        <h1>Quienes Somos: Ajedrez Master</h1>
+        
+        <div class="content">
+            <p>
+                Bienvenidos a Ajedrez Master, la plataforma definitiva diseñada por y para apasionados del ajedrez que buscan llevar su juego al siguiente nivel mediante la tecnología de vanguardia. Nuestra misión es simple pero ambiciosa: transformar la manera en que los jugadores de todos los niveles estudian, practican y comprenden los secretos del tablero. En un mundo donde la información es abundante pero el tiempo es escaso, hemos creado una herramienta que destila la complejidad del ajedrez en un sistema de aprendizaje intuitivo, potente y estéticamente refinado.
+            </p>
+            <p>
+                Fundada por un equipo multidisciplinar de maestros de ajedrez, ingenieros de software y expertos en tecnología, Ajedrez Master nació de la necesidad de cerrar la brecha entre el estudio teórico abstracto y la práctica competitiva real. Observamos que muchos jugadores invertirían horas en libros de aperturas sin ver resultados tangibles debido a la falta de un entorno de entrenamiento interactivo. Así, decidimos construir una plataforma que no solo ofrece información, sino que obliga al usuario a participar activamente en el proceso de toma de decisiones, reforzando la memoria muscular y la visión táctica en cada clic.
+            </p>
+            <p>
+                Nuestra filosofía se basa en tres pilares fundamentales: Innovación, Accesibilidad y Excelencia. Creemos que la tecnología no debe ser solo un oráculo que dicta sentencias, sino un mentor que ilumina el camino. Por ello, hemos integrado motores de análisis de clase mundial como Stockfish para proporcionar evaluaciones instantáneas y precisas, pero siempre acompañadas de una interfaz que ayuda a construir una comprensión estratégica profunda. Queremos que entiendas el juego, no que lo imites.
+            </p>
+            <p>
+                En nuestra sección de "Aperturas", hemos seleccionado cuidadosamente los sistemas más efectivos del ajedrez moderno, permitiendo a nuestros usuarios construir un repertorio sólido y flexible. Nuestro módulo de "Simulación" permite experimentar libremente con ideas nuevas contra un oponente virtual implacable, mientras que el módulo de "Análisis" ofrece la capacidad técnica de diseccionar partidas propias paso a paso para identificar errores y oportunidades perdidas. Todo esto se presenta en una interfaz oscura y minimalista, diseñada para minimizar las distraiciones y permitir que el usuario se sumerja completamente en el flujo del juego.
+            </p>
+            <p>
+                Con sede en Santiago de Chile y con una comunidad que crece día a día en toda Hispanoamérica, Ajedrez Master no es solo una aplicación, es un ecosistema para el crecimiento intelectual. Nos enorgullece ver cómo nuestros usuarios pasan de la duda a la determinación, ganando confianza partida tras partida. Nos esforzamos constantemente por actualizar nuestros algoritmos y expandir nuestra biblioteca de contenidos para asegurar que nuestra comunidad siempre tenga acceso a las mejores herramientas disponibles en el mercado global.
+            </p>
+            <p>
+                Gracias por confiar en nosotros para ser parte de tu viaje ajedrecístico. Ya seas un principiante dando sus primeros pasos o un jugador de club buscando tu próximo título, estamos aquí para asegurarnos de que cada movimiento que hagas sea un movimiento maestro. Te invitamos a explorar todas nuestras funciones, leer nuestro blog para estar al tanto de las últimas tendencias y, sobre todo, a disfrutar de la inmensa satisfacción que produce ver cómo tu comprensión del ajedrez se expande hasta límites que nunca imaginaste. ¡Que empiece la partida!
+            </p>
+            <p>
+                Además de nuestras herramientas técnicas, en Ajedrez Master valoramos la historia y la cultura del ajedrez. Creemos que conocer las partidas clásicas de los grandes campeones del pasado, desde Morphy hasta Carlsen, es esencial para forjar un carácter ajedrecístico sólido. Por eso, integramos constantes referencias históricas en nuestro blog y análisis. No solo queremos que seas un mejor jugador táctico, sino un conocedor profundo de la belleza artística que reside en cada combinación brillante.
+            </p>
+            <p>
+                Nuestro compromiso con la transparencia y la mejora continua nos lleva a escuchar activamente a nuestra comunidad. Cada sugerencia de nuestros usuarios es evaluada para futuras actualizaciones. En Ajedrez Master, el camino hacia la perfección no tiene fin, al igual que las posibilidades infinitas del ajedrez. Estamos emocionados de tenerte con nosotros en esta aventura intelectual y deportiva.
+            </p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <svg class="stat-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                <div class="stat-title">Excelencia</div>
+                <div class="stat-desc">Estándares tácticos</div>
+            </div>
+            <div class="stat-card">
+                <svg class="stat-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <div class="stat-title">Entrenamiento</div>
+                <div class="stat-desc">Metodologías avanzadas</div>
+            </div>
+            <div class="stat-card">
+                <svg class="stat-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                <div class="stat-title">Comunidad</div>
+                <div class="stat-desc">Jugadores activos</div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div>Ajedrez Master &copy; 2026</div>
+        <div>Innovación en el tablero</div>
+    </footer>
+</body>
+</html>
