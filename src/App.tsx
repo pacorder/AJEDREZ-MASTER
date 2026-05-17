@@ -22,9 +22,8 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { OPENINGS, Opening } from './lib/openings';
-import { analyzePosition, getBestMoveSuggestion } from './services/aiService';
 import { cn } from './lib/utils';
-import { Play, Zap, ShieldAlert, Cpu } from 'lucide-react';
+import { Play, Zap, ShieldAlert } from 'lucide-react';
 
 export default function App() {
   const [game, setGame] = useState(new Chess());
@@ -32,14 +31,10 @@ export default function App() {
   const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
   const [status, setStatus] = useState<'idle' | 'training' | 'completed' | 'error'>('idle');
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [threats, setThreats] = useState<string[]>([]);
   const [mode, setMode] = useState<'training' | 'simulation' | 'analysis'>('training');
   const [view, setView] = useState<'game' | 'blog' | 'about'>('game');
-  const [engineSuggestion, setEngineSuggestion] = useState<{ evaluation: string, bestMove: string, explanation: string } | null>(null);
-  const [isThinking, setIsThinking] = useState(false);
   const [pgnInput, setPgnInput] = useState('');
   const [fullHistory, setFullHistory] = useState<string[]>([]);
   const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>('white');
@@ -55,8 +50,6 @@ export default function App() {
       setFullHistory(history);
       setGame(newGame);
       setCurrentMoveIndex(history.length);
-      setAnalysis(null);
-      setEngineSuggestion(null);
       setFeedback("PGN Cargado con éxito");
       if (content) setPgnInput(content);
       setTimeout(() => setFeedback(null), 2000);
@@ -116,7 +109,6 @@ export default function App() {
     setFullHistory([]);
     setStatus('training');
     setFeedback(null);
-    setAnalysis(null);
     setShowHint(false);
     setThreats([]);
   };
@@ -149,7 +141,6 @@ export default function App() {
           setGame(newGame);
           setCurrentMoveIndex(nextHistory.length);
           updateThreats(newGame);
-          setEngineSuggestion(null);
           return true;
         }
       } catch (e) { return false; }
@@ -199,15 +190,6 @@ export default function App() {
     }
   }
 
-  const handleAnalyze = async () => {
-    if (!selectedOpening) return;
-    setIsAnalyzing(true);
-    const history = game.history();
-    const result = await analyzePosition(selectedOpening.name, history);
-    setAnalysis(result);
-    setIsAnalyzing(false);
-  };
-
   const stepForward = useCallback(() => {
     if (mode === 'training') {
       if (!selectedOpening || currentMoveIndex >= selectedOpening.moves.length) return;
@@ -241,12 +223,11 @@ export default function App() {
         setGame(newGame);
         setCurrentMoveIndex(prev => prev + 1);
         updateThreats(newGame);
-        setEngineSuggestion(null);
       } catch (e) {
         console.error("Navigation error", e);
       }
     }
-  }, [game, selectedOpening, currentMoveIndex, updateThreats, mode, fullHistory]);
+  }, [selectedOpening, currentMoveIndex, updateThreats, mode, fullHistory]);
 
   const stepBackward = useCallback(() => {
     if (currentMoveIndex <= 0) return;
@@ -264,35 +245,7 @@ export default function App() {
     setStatus(mode === 'training' ? 'training' : status);
     setFeedback(null);
     updateThreats(newGame);
-    setEngineSuggestion(null);
-  }, [game, currentMoveIndex, updateThreats, mode, fullHistory, selectedOpening, status]);
-
-  const getEngineAdvice = useCallback(async (currentFen: string, history: string[]) => {
-    setIsThinking(true);
-    const suggestion = await getBestMoveSuggestion(currentFen, history);
-    setEngineSuggestion(suggestion);
-    setIsThinking(false);
-  }, []);
-
-  const playBestMove = useCallback(() => {
-    if (!engineSuggestion || !engineSuggestion.bestMove) return;
-    
-    const newGame = new Chess();
-    const historyToLoad = fullHistory.slice(0, currentMoveIndex);
-    for (const m of historyToLoad) newGame.move(m);
-
-    try {
-      newGame.move(engineSuggestion.bestMove);
-      const nextHistory = [...historyToLoad, engineSuggestion.bestMove];
-      setFullHistory(nextHistory);
-      setGame(newGame);
-      setCurrentMoveIndex(nextHistory.length);
-      updateThreats(newGame);
-      setEngineSuggestion(null);
-    } catch (e) {
-      console.error("Engine move failed", e);
-    }
-  }, [game, engineSuggestion, updateThreats, fullHistory, currentMoveIndex]);
+  }, [currentMoveIndex, updateThreats, mode, fullHistory, selectedOpening, status]);
 
   return (
     <div className="h-screen bg-[#0A0A0C] text-[#E0E0E0] flex flex-col font-sans overflow-hidden">
@@ -396,7 +349,7 @@ export default function App() {
                 </div>
                 <div className="pt-4 border-t border-white/5">
                   <p className="text-[9px] text-white/30 uppercase leading-relaxed italic">
-                    Usa este modo para analizar tus propias partidas o de Grandes Maestros. Podrás navegar por cada movimiento y consultar a la IA.
+                    Usa este modo para analizar tus propias partidas o de Grandes Maestros. Podrás navegar por cada movimiento y estudiar las líneas teóricas.
                   </p>
                 </div>
               </div>
@@ -486,57 +439,11 @@ export default function App() {
           <div className="mt-8 flex gap-4 w-full max-w-[540px]">
             <button 
               onClick={resetGame}
-              className="px-4 py-3 bg-[#D4AF37] text-black font-bold uppercase tracking-widest text-[11px] rounded-sm hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className="w-full px-4 py-3 bg-[#D4AF37] text-black font-bold uppercase tracking-widest text-[11px] rounded-sm hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
-              <RotateCcw className="w-3.5 h-3.5" /> Vaciar
-            </button>
-            <button 
-              onClick={() => getEngineAdvice(game.fen(), game.history())}
-              disabled={isThinking}
-              className="flex-1 px-4 py-3 bg-white/5 border border-white/10 text-white font-bold uppercase tracking-widest text-[11px] rounded-sm hover:bg-white/10 disabled:opacity-20 transition-all flex items-center justify-center gap-2"
-            >
-              <Cpu className={cn("w-3.5 h-3.5", isThinking && "animate-spin")} /> 
-              {isThinking ? 'Consultando...' : 'Consultar Stockfish AI'}
+              <RotateCcw className="w-3.5 h-3.5" /> Vaciar Tablero
             </button>
           </div>
-
-          <AnimatePresence>
-            {engineSuggestion && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="w-full max-w-[540px] bg-[#121217] border border-[#D4AF37]/30 rounded-sm p-4 mt-6"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-[#D4AF37]" />
-                    <span className="text-[10px] uppercase tracking-widest font-bold text-[#D4AF37]">Recomendación de Motor</span>
-                  </div>
-                  <span className={cn(
-                    "font-mono text-xs px-2 py-0.5 rounded-sm",
-                    parseFloat(engineSuggestion.evaluation) >= 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
-                  )}>
-                    {engineSuggestion.evaluation}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <p className="text-[10px] text-white/40 uppercase mb-1">Mejor jugada</p>
-                    <p className="text-2xl font-mono text-white font-bold leading-none">{engineSuggestion.bestMove}</p>
-                  </div>
-                  <button 
-                    onClick={playBestMove}
-                    className="bg-[#D4AF37] text-black text-[10px] uppercase font-bold px-4 py-2 flex items-center gap-2 hover:brightness-110 transition-all"
-                  >
-                    <Play className="w-3 h-3 fill-current" /> Auto-Play
-                  </button>
-                </div>
-                <p className="mt-3 text-[11px] text-white/60 font-serif italic border-t border-white/5 pt-3">
-                  "{engineSuggestion.explanation}"
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           <AnimatePresence>
             {feedback && (
@@ -633,7 +540,6 @@ export default function App() {
                               setGame(newGame);
                               setCurrentMoveIndex(i * 2 + 1);
                               updateThreats(newGame);
-                              setEngineSuggestion(null);
                             }}
                             className={cn(
                               "w-12 text-left hover:text-[#D4AF37] transition-colors",
@@ -650,7 +556,6 @@ export default function App() {
                                 setGame(newGame);
                                 setCurrentMoveIndex(i * 2 + 2);
                                 updateThreats(newGame);
-                                setEngineSuggestion(null);
                               }}
                               className={cn(
                                 "w-12 text-left hover:text-[#D4AF37] transition-colors",
@@ -703,43 +608,33 @@ export default function App() {
             </div>
 
             <div className="mt-8 border-t border-white/5 pt-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[11px] uppercase tracking-widest text-white/50 font-bold flex items-center gap-2">
-                  <Brain className="w-3 h-3" /> Insights IA
-                </h2>
-                <button
-                  onClick={handleAnalyze}
-                  disabled={!selectedOpening || isAnalyzing}
-                  className="text-[9px] bg-white/5 hover:bg-white/10 border border-white/10 text-[#D4AF37] px-3 py-1 rounded-sm uppercase tracking-widest transition-all disabled:opacity-20"
-                >
-                  {isAnalyzing ? 'Calculando...' : 'Analizar'}
-                </button>
-              </div>
-              
-              <div className="bg-black/40 border border-white/5 rounded-sm h-[300px] overflow-y-auto custom-scrollbar p-4 text-[11px] leading-relaxed text-white/60">
-                {analysis ? (
-                  <div className="prose prose-invert prose-[11px]">
-                    <div className="whitespace-pre-wrap font-serif italic">{analysis}</div>
-                  </div>
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center opacity-20 text-center px-4">
-                    <Brain className="w-8 h-8 mb-3" />
-                    <p className="italic">Solicita un análisis profundo para desbloquear el conocimiento táctico.</p>
-                  </div>
-                )}
+              <h2 className="text-[11px] uppercase tracking-widest text-white/50 mb-4 font-bold flex items-center gap-2">
+                <Brain className="w-3 h-3" /> Panel de Control
+              </h2>
+              <div className="bg-black/40 border border-white/5 rounded-sm h-[300px] overflow-y-auto custom-scrollbar p-4 text-[11px] leading-relaxed text-white/40">
+                <div className="h-full flex flex-col items-center justify-center text-center px-4 gap-4">
+                  <Info className="w-8 h-8 opacity-20" />
+                  <p className="italic">Utilice el tablero para practicar sus aperturas y mejorar su visión estratégica.</p>
+                  <button 
+                    onClick={() => setView('about')}
+                    className="text-[10px] text-[#D4AF37] uppercase tracking-widest hover:underline"
+                  >
+                    Saber más sobre nosotros
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Engine Evaluation Footer */}
+          {/* Game Stats Footer */}
           <div className="p-4 bg-black border-t border-white/10">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] uppercase tracking-[0.2em] text-white/30">Motor Analítico Activo</span>
-              <span className="text-[10px] font-mono text-[#D4AF37] tracking-wider">+0.42</span>
+              <span className="text-[9px] uppercase tracking-[0.2em] text-white/30">Progreso de la Partida</span>
+              <span className="text-[10px] font-mono text-[#D4AF37] tracking-wider">Turno: {game.turn() === 'w' ? 'Blanco' : 'Negro'}</span>
             </div>
             <div className="w-full bg-white/5 h-4 relative rounded-full overflow-hidden border border-white/10">
-              <div className="absolute left-0 top-0 bottom-0 bg-white/80 w-[52%] shadow-[0_0_10px_white]"></div>
-              <div className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-black mix-blend-difference tracking-[0.3em]">BALANCE</div>
+              <div className="absolute left-0 top-0 bottom-0 bg-white/80 transition-all duration-500" style={{ width: '50%' }}></div>
+              <div className="absolute inset-0 flex items-center justify-center text-[7px] font-bold text-black mix-blend-difference tracking-[0.3em]">EQUILIBRIO ESTRATÉGICO</div>
             </div>
           </div>
         </aside>
@@ -750,9 +645,9 @@ export default function App() {
           <h2 className="text-4xl font-serif italic text-[#D4AF37] mb-8">Blog de Ajedrez Master</h2>
           <div className="space-y-12">
             <article className="border-b border-white/10 pb-12">
-              <h3 className="text-2xl font-serif text-white mb-4">La Evolución del Análisis con IA en el Ajedrez Moderno</h3>
+              <h3 className="text-2xl font-serif text-white mb-4">La Evolución del Ajedrez en la Era Digital</h3>
               <p className="text-white/60 leading-relaxed mb-6">
-                Desde la legendaria victoria de Deep Blue sobre Garry Kasparov en 1997, el mundo del ajedrez ha experimentado una transformación sin precedentes impulsada por la tecnología. Hoy en día, no solo hablamos de máquinas que calculan millones de posiciones por segundo, sino de redes neuronales que "entienden" el juego de una manera casi humana, pero con una precisión sobrehumana. En Ajedrez Master, integramos estas herramientas no para reemplazar el pensamiento crítico, sino para potenciarlo.
+                Desde la legendaria victoria de Deep Blue sobre Garry Kasparov en 1997, el mundo del ajedrez ha experimentado una transformación sin precedentes impulsada por la tecnología. Hoy en día, contamos con herramientas que nos permiten entender el juego con una precisión sobrehumana. En Ajedrez Master, integramos estas herramientas para potenciar el pensamiento crítico de nuestros usuarios.
               </p>
               <p className="text-white/60 leading-relaxed mb-6">
                 El análisis moderno ya no se limita a ver quién tiene una ventaja material de +1.5. Los motores actuales, como el que utilizamos basado en la arquitectura de Stockfish, nos permiten explorar sutilezas posicionales que antes pasaban desapercibidas. Por ejemplo, la comprensión del espacio en el tablero y la coordinación de las piezas a largo plazo son aspectos que las versiones anteriores de los motores solían subestimar. Hoy en día, un jugador puede recibir una sugerencia que parece contraintuitiva —como sacrificar un peón por una compensación posicional abstracta— y ver cómo esa decisión se justifica a lo largo de 20 movimientos perfectos.
@@ -843,8 +738,8 @@ export default function App() {
             </div>
             <div className="bg-white/5 p-6 border border-white/10 rounded-sm text-center">
               <Brain className="w-8 h-8 text-[#D4AF37] mx-auto mb-4" />
-              <h4 className="text-white font-bold mb-2 text-sm uppercase tracking-wider">IA Avanzada</h4>
-              <p className="text-[10px] text-white/40 uppercase leading-relaxed">Tecnología de última generación a tu servicio.</p>
+              <h4 className="text-white font-bold mb-2 text-sm uppercase tracking-wider">Entrenamiento</h4>
+              <p className="text-[10px] text-white/40 uppercase leading-relaxed">Metodologías avanzadas de estudio a tu servicio.</p>
             </div>
             <div className="bg-white/5 p-6 border border-white/10 rounded-sm text-center">
               <CheckCircle2 className="w-8 h-8 text-[#D4AF37] mx-auto mb-4" />

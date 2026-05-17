@@ -1,8 +1,6 @@
 {
   "name": "Ajedrez Master",
-  "description": "Domina el ajedrez con entrenamiento de aperturas, simulación de partidas y análisis profesional con Stockfish AI.",
+  "description": "Domina el ajedrez con entrenamiento de aperturas, simulación de partidas y análisis estratégico profesional.",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": []
 }
