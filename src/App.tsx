@@ -19,7 +19,8 @@ import {
   Trophy,
   Info,
   Upload,
-  RefreshCw
+  RefreshCw,
+  Cpu
 } from 'lucide-react';
 import { OPENINGS, Opening } from './lib/openings';
 import { cn } from './lib/utils';
@@ -38,6 +39,67 @@ export default function App() {
   const [pgnInput, setPgnInput] = useState('');
   const [fullHistory, setFullHistory] = useState<string[]>([]);
   const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>('white');
+  const [isThinking, setIsThinking] = useState(false);
+  const [engineSuggestion, setEngineSuggestion] = useState<{ evaluation: string, bestMove: string } | null>(null);
+
+  // Inicializar Worker de Stockfish (CDN)
+  const stockfishWorker = useMemo(() => {
+    try {
+      return new Worker('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js');
+    } catch (e) {
+      console.error("Error al cargar Stockfish", e);
+      return null;
+    }
+  }, []);
+
+  const getEngineAdvice = useCallback(() => {
+    if (!stockfishWorker) return;
+
+    setIsThinking(true);
+    setEngineSuggestion(null);
+
+    // Configurar listener para recibir la mejor jugada
+    stockfishWorker.onmessage = (event: MessageEvent) => {
+      const line = event.data;
+      
+      // La evaluación suele venir en líneas con 'score cp' o 'score mate'
+      // La mejor jugada viene en 'bestmove'
+      if (line.includes('bestmove')) {
+        const parts = line.split(' ');
+        const bestMove = parts[1];
+        setEngineSuggestion(prev => ({ 
+          evaluation: prev?.evaluation || 'Análisis',
+          bestMove 
+        }));
+        setIsThinking(false);
+      }
+      
+      if (line.includes('score cp')) {
+        const cp = line.split('score cp ')[1].split(' ')[0];
+        const evaluation = (parseInt(cp) / 100).toFixed(2);
+        setEngineSuggestion(prev => ({ 
+          ...prev, 
+          evaluation: (parseFloat(evaluation) > 0 ? '+' : '') + evaluation,
+          bestMove: prev?.bestMove || ''
+        }));
+      }
+    };
+
+    // Comandos UCI para Stockfish
+    stockfishWorker.postMessage('uci');
+    stockfishWorker.postMessage(`position fen ${game.fen()}`);
+    stockfishWorker.postMessage('go depth 12');
+  }, [stockfishWorker, game]);
+
+  const playBestMove = useCallback(() => {
+    if (!engineSuggestion || !engineSuggestion.bestMove) return;
+    
+    const from = engineSuggestion.bestMove.substring(0, 2);
+    const to = engineSuggestion.bestMove.substring(2, 4);
+
+    onDrop(from, to);
+    setEngineSuggestion(null);
+  }, [engineSuggestion, game]);
 
   const loadPgn = useCallback((content?: string) => {
     try {
@@ -141,6 +203,7 @@ export default function App() {
           setGame(newGame);
           setCurrentMoveIndex(nextHistory.length);
           updateThreats(newGame);
+          setEngineSuggestion(null);
           return true;
         }
       } catch (e) { return false; }
@@ -172,6 +235,7 @@ export default function App() {
         setFeedback("¡Correcto!");
         setShowHint(false);
         updateThreats(newGame);
+        setEngineSuggestion(null);
 
         if (nextIndex >= selectedOpening.moves.length) {
           setStatus('completed');
@@ -439,15 +503,59 @@ export default function App() {
           <div className="mt-8 flex gap-4 w-full max-w-[540px]">
             <button 
               onClick={resetGame}
-              className="w-full px-4 py-3 bg-[#D4AF37] text-black font-bold uppercase tracking-widest text-[11px] rounded-sm hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className="px-4 py-3 bg-white/5 border border-white/10 text-white/60 font-bold uppercase tracking-widest text-[11px] rounded-sm hover:bg-white/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
-              <RotateCcw className="w-3.5 h-3.5" /> Vaciar Tablero
+              <RotateCcw className="w-3.5 h-3.5" /> Vaciar
+            </button>
+            <button 
+              onClick={getEngineAdvice}
+              disabled={isThinking}
+              className="flex-1 px-4 py-3 bg-[#D4AF37] text-black font-bold uppercase tracking-widest text-[11px] rounded-sm hover:brightness-110 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20"
+            >
+              <Cpu className={cn("w-3.5 h-3.5", isThinking && "animate-spin")} /> 
+              {isThinking ? 'Analizando...' : 'Consultar Stockfish (WASM)'}
             </button>
           </div>
 
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
+            {engineSuggestion && (
+              <motion.div
+                key="engine-suggestion"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="w-full max-w-[540px] bg-[#121217] border border-[#D4AF37]/30 rounded-sm p-4 mt-6"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-[#D4AF37]" />
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-[#D4AF37]">Sugerencia Local</span>
+                  </div>
+                  <span className={cn(
+                    "font-mono text-xs px-2 py-0.5 rounded-sm",
+                    engineSuggestion.evaluation.includes('+') ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
+                  )}>
+                    {engineSuggestion.evaluation}
+                  </span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-[10px] text-white/40 uppercase mb-1">Movimiento Sugerido</p>
+                    <p className="text-2xl font-mono text-white font-bold leading-none">{engineSuggestion.bestMove}</p>
+                  </div>
+                  <button 
+                    onClick={playBestMove}
+                    className="bg-[#D4AF37] text-black text-[10px] uppercase font-bold px-4 py-2 flex items-center gap-2 hover:brightness-110 transition-all rounded-sm"
+                  >
+                    <Play className="w-3 h-3 fill-current" /> Ejecutar
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
             {feedback && (
               <motion.div
+                key="feedback-message"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -461,6 +569,7 @@ export default function App() {
                 {feedback}
               </motion.div>
             )}
+          </AnimatePresence>
             
             {showHint && selectedOpening && (
               <motion.div
@@ -491,7 +600,6 @@ export default function App() {
                 </div>
               </motion.div>
             )}
-          </AnimatePresence>
         </section>
 
         {/* Right Panel: Analysis & Stats */}
