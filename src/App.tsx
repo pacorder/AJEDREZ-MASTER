@@ -361,7 +361,7 @@ export default function App() {
              }}
              className={cn("transition-colors", mode === 'simulation' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
           >
-            Simulación
+            SIMULACIÓN
           </button>
           <button 
             onClick={() => {
@@ -370,10 +370,10 @@ export default function App() {
             }}
             className={cn("transition-colors", mode === 'analysis' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
           >
-            Análisis
+            ANÁLISIS
           </button>
-          <a href="/blog.html" className="hover:text-[#D4AF37] transition-colors leading-none pt-1">Blog</a>
-          <a href="/quienes-somos.html" className="hover:text-[#D4AF37] transition-colors leading-none pt-1">Nosotros</a>
+          <a href="/blog.html" className="hover:text-[#D4AF37] transition-colors leading-none pt-1">BLOG</a>
+          <a href="/quienes-somos.html" className="hover:text-[#D4AF37] transition-colors leading-none pt-1">NOSOTROS</a>
         </nav>
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
@@ -761,18 +761,28 @@ export default function App() {
       </main>
 
       {/* Bottom Status Bar */}
-      <footer className="h-8 bg-[#0F0F12] border-t border-white/10 flex items-center justify-between px-8 text-[9px] uppercase tracking-[0.2em] flex-shrink-0">
-        <div className="text-white/30 flex items-center gap-2">
-          Sessión: <span className="text-white/60 font-mono">12:45:00</span>
+      <footer className="h-10 bg-[#0F0F12] border-t border-white/10 flex items-center justify-between px-8 text-[9px] uppercase tracking-[0.2em] flex-shrink-0">
+        <div className="flex gap-6 items-center">
+          <div className="text-white/30 flex items-center gap-2">
+            AJEDREZ MASTER <span className="opacity-50">© 2026</span>
+          </div>
+          <div className="text-white/20 hidden sm:block border-l border-white/10 pl-6">
+            DESARROLLADO POR <span className="text-white/40 font-bold">PATRICIO CIFUENTES</span>
+          </div>
         </div>
         <div className="flex gap-8 items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-white/30">Métrica de Retención:</span>
-            <span className="text-[#D4AF37] font-mono">84%</span>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="text-white/30">Métrica de Retención:</span>
+              <span className="text-[#D4AF37] font-mono">84%</span>
+            </div>
+            <div className="flex items-center gap-2 text-[#D4AF37]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse"></span>
+              <span>Cloud Engine v10.0.2</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-[#D4AF37]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse"></span>
-            <span>Cloud Engine Master</span>
+          <div className="text-white/30 flex items-center gap-2 border-l border-white/10 pl-6">
+            LATENCIA: <span className="text-emerald-500 font-mono">14ms</span>
           </div>
         </div>
       </footer>
