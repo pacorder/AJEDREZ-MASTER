@@ -391,105 +391,98 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 flex overflow-hidden">
         {/* Sidebar: Repertoire Selection */}
-        <aside className="w-72 border-r border-white/10 bg-[#0C0C0E] flex flex-col flex-shrink-0">
-          <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
-            {mode === 'analysis' ? (
-              <div className="space-y-4">
-                <h2 className="text-[11px] uppercase tracking-widest text-[#D4AF37] mb-4 font-bold flex items-center gap-2">
-                  <Zap className="w-3 h-3" /> Cargar Partida (PGN)
-                </h2>
-                <textarea
-                  value={pgnInput}
-                  onChange={(e) => setPgnInput(e.target.value)}
-                  placeholder="Pega aquí el PGN de la partida..."
-                  className="w-full h-48 bg-white/5 border border-white/10 rounded-sm p-3 text-[10px] font-mono text-white/70 focus:outline-none focus:border-[#D4AF37]/50 transition-colors resize-none"
-                />
-                
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => loadPgn()}
-                    className="flex-1 py-2 bg-[#D4AF37] text-black text-[10px] uppercase font-bold tracking-widest rounded-sm hover:brightness-110"
-                  >
-                    Importar Texto
-                  </button>
-                  <label className="flex-1 py-2 bg-white/5 border border-white/10 text-white text-[10px] uppercase font-bold tracking-widest rounded-sm hover:bg-white/10 cursor-pointer flex items-center justify-center gap-2">
-                    <Upload className="w-3 h-3" />
-                    Subir Archivo
-                    <input 
-                      type="file" 
-                      accept=".pgn" 
-                      onChange={handleFileUpload} 
-                      className="hidden" 
-                    />
-                  </label>
-                </div>
-                <div className="pt-4 border-t border-white/5">
-                  <p className="text-[9px] text-white/30 uppercase leading-relaxed italic">
-                    Usa este modo para analizar tus propias partidas o de Grandes Maestros. Podrás navegar por cada movimiento y estudiar las líneas teóricas.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <>
-                <h2 className="text-[11px] uppercase tracking-widest text-white/50 mb-6 font-bold flex items-center gap-2">
-                  <BookOpen className="w-3 h-3" /> Mis Aperturas
-                </h2>
-                <div className="space-y-3">
-                  {OPENINGS.map((op) => (
-                    <div
-                      key={op.id}
-                      onClick={() => startTraining(op)}
-                      className={cn(
-                        "p-3 rounded-lg cursor-pointer transition-all duration-300 border group",
-                        selectedOpening?.id === op.id 
-                          ? "bg-white/5 border-[#D4AF37]/30" 
-                          : "hover:bg-white/5 border-transparent"
-                      )}
+        {mode !== 'simulation' && (
+          <aside className="w-72 border-r border-white/10 bg-[#0C0C0E] flex flex-col flex-shrink-0">
+            <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+              {mode === 'analysis' ? (
+                <div className="space-y-4">
+                  <h2 className="text-[11px] uppercase tracking-widest text-[#D4AF37] mb-4 font-bold flex items-center gap-2">
+                    <Zap className="w-3 h-3" /> Cargar Partida (PGN)
+                  </h2>
+                  <textarea
+                    value={pgnInput}
+                    onChange={(e) => setPgnInput(e.target.value)}
+                    placeholder="Pega aquí el PGN de la partida..."
+                    className="w-full h-48 bg-white/5 border border-white/10 rounded-sm p-3 text-[10px] font-mono text-white/70 focus:outline-none focus:border-[#D4AF37]/50 transition-colors resize-none"
+                  />
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => loadPgn()}
+                      className="flex-1 py-2 bg-[#D4AF37] text-black text-[10px] uppercase font-bold tracking-widest rounded-sm hover:brightness-110"
                     >
-                      <p className={cn(
-                        "text-xs font-serif italic mb-0.5 group-hover:text-[#D4AF37] transition-colors",
-                        selectedOpening?.id === op.id ? "text-[#D4AF37]" : "text-white/80"
-                      )}>
-                        {op.name}
-                      </p>
-                      <p className="text-[10px] text-white/40 uppercase tracking-tighter">{op.moves.length} Movimientos</p>
-                      <div className="mt-2 w-full bg-white/10 h-1 rounded-full overflow-hidden">
-                        <div 
-                          className="bg-[#D4AF37] h-full transition-all duration-1000 ease-out" 
-                          style={{ 
-                            width: selectedOpening?.id === op.id 
-                              ? `${(currentMoveIndex / op.moves.length) * 100}%` 
-                              : '0%' 
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
+                      Importar Texto
+                    </button>
+                    <label className="flex-1 py-2 bg-white/5 border border-white/10 text-white text-[10px] uppercase font-bold tracking-widest rounded-sm hover:bg-white/10 cursor-pointer flex items-center justify-center gap-2">
+                      <Upload className="w-3 h-3" />
+                      Subir Archivo
+                      <input 
+                        type="file" 
+                        accept=".pgn" 
+                        onChange={handleFileUpload} 
+                        className="hidden" 
+                      />
+                    </label>
+                  </div>
+                  <div className="pt-4 border-t border-white/5">
+                    <p className="text-[9px] text-white/30 uppercase leading-relaxed italic">
+                      Usa este modo para analizar tus propias partidas o de Grandes Maestros. Podrás navegar por cada movimiento y estudiar las líneas teóricas.
+                    </p>
+                  </div>
                 </div>
-              </>
-            )}
-          </div>
-          {selectedOpening && (
-            <div className="p-6 border-t border-white/5 bg-[#0a0a0c]">
-              <h3 className="text-[10px] uppercase tracking-widest text-[#D4AF37] mb-2 font-bold">Resumen Estratégico</h3>
-              <p className="text-[11px] leading-relaxed text-white/40 font-serif italic">
-                {selectedOpening.description}
-              </p>
+              ) : mode === 'training' ? (
+                <>
+                  <h2 className="text-[11px] uppercase tracking-widest text-white/50 mb-6 font-bold flex items-center gap-2">
+                    <BookOpen className="w-3 h-3" /> Mis Aperturas
+                  </h2>
+                  <div className="space-y-3">
+                    {OPENINGS.map((op) => (
+                      <div
+                        key={op.id}
+                        onClick={() => startTraining(op)}
+                        className={cn(
+                          "p-3 rounded-lg cursor-pointer transition-all duration-300 border group",
+                          selectedOpening?.id === op.id 
+                            ? "bg-white/5 border-[#D4AF37]/30" 
+                            : "hover:bg-white/5 border-transparent"
+                        )}
+                      >
+                        <p className={cn(
+                          "text-xs font-serif italic mb-0.5 group-hover:text-[#D4AF37] transition-colors",
+                          selectedOpening?.id === op.id ? "text-[#D4AF37]" : "text-white/80"
+                        )}>
+                          {op.name}
+                        </p>
+                        <p className="text-[10px] text-white/40 uppercase tracking-tighter">{op.moves.length} Movimientos</p>
+                        <div className="mt-2 w-full bg-white/10 h-1 rounded-full overflow-hidden">
+                          <div 
+                            className="bg-[#D4AF37] h-full transition-all duration-1000 ease-out" 
+                            style={{ 
+                              width: selectedOpening?.id === op.id 
+                                ? `${(currentMoveIndex / op.moves.length) * 100}%` 
+                                : '0%' 
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
-          )}
-        </aside>
+            {mode === 'training' && selectedOpening && (
+              <div className="p-6 border-t border-white/5 bg-[#0a0a0c]">
+                <h3 className="text-[10px] uppercase tracking-widest text-[#D4AF37] mb-2 font-bold">Resumen Estratégico</h3>
+                <p className="text-[11px] leading-relaxed text-white/40 font-serif italic">
+                  {selectedOpening.description}
+                </p>
+              </div>
+            )}
+          </aside>
+        )}
 
         {/* Central Training Zone */}
         <section className="flex-1 flex flex-col items-center justify-center bg-[#08080A] relative p-8">
-          <div className="absolute top-8 left-10 text-left">
-            <h3 className="text-3xl font-serif italic text-white mb-1">
-              {selectedOpening?.name || "Seleccione una apertura"}
-            </h3>
-            <p className="text-xs text-white/40 uppercase tracking-widest">
-              {selectedOpening ? `Fase de Memorización: Movimiento ${currentMoveIndex}/${selectedOpening.moves.length}` : "Comienza tu entrenamiento diario"}
-            </p>
-          </div>
-          
           {/* Chess Board Visual */}
           <div className="w-full max-w-[540px] aspect-square bg-[#1A1A1E] p-2 shadow-[0_0_50px_rgba(0,0,0,0.8)] rounded-sm ring-1 ring-white/10 relative">
             <Chessboard 
@@ -725,24 +718,6 @@ export default function App() {
                   );
                 })
               )}
-            </div>
-
-            <div className="mt-8 border-t border-white/5 pt-8">
-              <h2 className="text-[11px] uppercase tracking-widest text-white/50 mb-4 font-bold flex items-center gap-2">
-                <Brain className="w-3 h-3" /> Panel de Control
-              </h2>
-              <div className="bg-black/40 border border-white/5 rounded-sm h-[300px] overflow-y-auto custom-scrollbar p-4 text-[11px] leading-relaxed text-white/40">
-                <div className="h-full flex flex-col items-center justify-center text-center px-4 gap-4">
-                  <Info className="w-8 h-8 opacity-20" />
-                  <p className="italic">Utilice el tablero para practicar sus aperturas y mejorar su visión estratégica.</p>
-                  <a 
-                    href="/quienes-somos.html"
-                    className="text-[10px] text-[#D4AF37] uppercase tracking-widest hover:underline"
-                  >
-                    Saber más sobre nosotros
-                  </a>
-                </div>
-              </div>
             </div>
           </div>
 
