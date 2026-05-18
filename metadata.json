@@ -1,6 +1,6 @@
 {
-  "name": "Ajedrez Master",
-  "description": "Domina el ajedrez con entrenamiento de aperturas, simulación de partidas y análisis estratégico profesional.",
+  "name": "Jaquemate",
+  "description": "Domina el tablero con Jaquemate. Entrenamiento de aperturas, simulación y análisis estratégico de nivel Gran Maestro.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

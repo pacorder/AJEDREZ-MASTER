@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quienes Somos - Ajedrez Master</title>
+    <title>Nosotros - Jaquemate</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #0A0A0C;
-            --bg-accent: #0F0F12;
+            --bg-accent: #050507;
             --text: #E0E0E0;
-            --text-muted: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.4);
             --gold: #D4AF37;
-            --border: rgba(255, 255, 255, 0.1);
+            --border: rgba(255, 255, 255, 0.05);
         }
 
         body {
@@ -43,7 +43,7 @@
             display: flex;
             align-items: center;
             gap: 16px;
-            color: white;
+            color: var(--gold);
             text-decoration: none;
         }
 
@@ -59,8 +59,10 @@
         }
 
         .logo-text {
-            font-family: 'Playfair Display', serif;
-            font-style: italic;
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
             font-size: 20px;
         }
 
@@ -73,9 +75,10 @@
             color: var(--text-muted);
             text-decoration: none;
             text-transform: uppercase;
+            font-family: 'Syne', sans-serif;
             font-size: 10px;
-            letter-spacing: 0.2em;
-            font-weight: 500;
+            letter-spacing: 0.25em;
+            font-weight: 700;
             transition: color 0.2s;
         }
 
@@ -86,20 +89,22 @@
         main {
             max-width: 900px;
             margin: 0 auto;
-            padding: 48px 24px;
+            padding: 80px 24px;
         }
 
         h1 {
-            font-family: 'Playfair Display', serif;
-            font-style: italic;
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            text-transform: uppercase;
             color: var(--gold);
-            font-size: 48px;
-            margin-bottom: 48px;
+            font-size: 56px;
+            letter-spacing: -0.02em;
+            margin-bottom: 64px;
         }
 
         .content {
-            font-family: 'Playfair Display', serif;
-            color: rgba(255, 255, 255, 0.7);
+            font-family: 'Inter', sans-serif;
+            color: rgba(255, 255, 255, 0.6);
             font-size: 18px;
             line-height: 1.8;
             margin-bottom: 48px;
@@ -149,17 +154,32 @@
         }
 
         footer {
-            height: 32px;
-            background-color: var(--bg-accent);
+            height: 48px;
+            background-color: #050507;
             border-top: 1px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 32px;
-            font-size: 9px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8px;
             text-transform: uppercase;
-            letter-spacing: 0.2em;
-            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 0.25em;
+            color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .footer-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
         }
     </style>
 </head>
@@ -169,7 +189,7 @@
             <div class="logo-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-4.96 2.5 2.5 0 0 1 2.76-3.9 2.5 2.5 0 0 1 3-3.04 2.5 2.5 0 0 1 .52.04Z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-4.96 2.5 2.5 0 0 0-2.76-3.9 2.5 2.5 0 0 0-3-3.04 2.5 2.5 0 0 0-.52.04Z"></path></svg>
             </div>
-            <span class="logo-text">Ajedrez Master</span>
+            <span class="logo-text">Jaquemate</span>
         </a>
         <nav>
             <a href="/">APERTURAS</a>
@@ -179,11 +199,11 @@
     </header>
 
     <main>
-        <h1>Quienes Somos: Ajedrez Master</h1>
+        <h1>Nosotros: Jaquemate</h1>
         
         <div class="content">
             <p>
-                Bienvenidos a Ajedrez Master, la plataforma definitiva diseñada por y para apasionados del ajedrez que buscan llevar su juego al siguiente nivel mediante la tecnología de vanguardia. Nuestra misión es simple pero ambiciosa: transformar la manera en que los jugadores de todos los niveles estudian, practican y comprenden los secretos del tablero. En un mundo donde la información es abundante pero el tiempo es escaso, hemos creado una herramienta que destila la complejidad del ajedrez en un sistema de aprendizaje intuitivo, potente y estéticamente refinado.
+                Bienvenidos a Jaquemate, la plataforma definitiva diseñada por y para apasionados del ajedrez que buscan llevar su juego al siguiente nivel mediante la tecnología de vanguardia. Nuestra misión es simple pero ambiciosa: transformar la manera en que los jugadores de todos los niveles estudian, practican y comprenden los secretos del tablero. En un mundo donde la información es abundante pero el tiempo es escaso, hemos creado una herramienta que destila la complejidad del ajedrez en un sistema de aprendizaje intuitivo, potente y estéticamente refinado.
             </p>
             <p>
                 Fundada por un equipo multidisciplinar de maestros de ajedrez, ingenieros de software y expertos en tecnología, Ajedrez Master nació de la necesidad de cerrar la brecha entre el estudio teórico abstracto y la práctica competitiva real. Observamos que muchos jugadores invertirían horas en libros de aperturas sin ver resultados tangibles debido a la falta de un entorno de entrenamiento interactivo. Así, decidimos construir una plataforma que no solo ofrece información, sino que obliga al usuario a participar activamente en el proceso de toma de decisiones, reforzando la memoria muscular y la visión táctica en cada clic.
@@ -228,11 +248,14 @@
     </main>
 
     <footer>
-        <div style="display: flex; gap: 24px; align-items: center;">
-            <div>AJEDREZ MASTER &copy; 2026</div>
-            <div style="opacity: 0.3; border-left: 1px solid var(--border); padding-left: 24px;">DESARROLLADO POR PATRICIO CIFUENTES</div>
+        <div class="footer-status">
+            <div class="dot"></div>
+            <span>JAQUEMATE MISSION_CONTROL // STATUS: ONLINE</span>
         </div>
-        <div>INNOVACIÓN EN EL TABLERO</div>
+        <div style="display: flex; gap: 32px; align-items: center;">
+            <div style="opacity: 0.5;">© 2026_EST. // OPERADOR: PATRICIO_CIFUENTES</div>
+            <div style="border-left: 1px solid rgba(255,255,255,0.1); padding-left: 32px;">CLOUD_CORE v10.0.2</div>
+        </div>
     </footer>
 </body>
 </html>

@@ -341,16 +341,29 @@ export default function App() {
     <div className="h-screen bg-[#0A0A0C] text-[#E0E0E0] flex flex-col font-sans overflow-hidden">
       {/* Header Navigation */}
       <header className="h-16 border-b border-white/10 flex items-center justify-between px-8 bg-[#0F0F12] flex-shrink-0 z-50 shadow-2xl">
-        <div className="flex items-center gap-4">
+        <button 
+          onClick={() => {
+            setMode('training');
+            setSelectedOpening(null);
+            setGame(new Chess());
+            setCurrentMoveIndex(0);
+            setStatus('idle');
+            setFeedback(null);
+            setEngineSuggestion(null);
+            setFullHistory([]);
+            setBoardOrientation('white');
+          }}
+          className="flex items-center gap-4 hover:opacity-80 transition-opacity"
+        >
           <div className="w-8 h-8 bg-gradient-to-tr from-[#D4AF37] to-[#8C6E2D] rounded-sm flex items-center justify-center shadow-lg shadow-amber-900/40">
             <Brain className="w-5 h-5 text-black" />
           </div>
-          <h1 className="text-xl font-serif italic tracking-wide text-white">Ajedrez Master</h1>
-        </div>
+          <h1 className="text-xl font-display font-extrabold uppercase tracking-widest text-[#D4AF37]">Jaquemate</h1>
+        </button>
         <nav className="hidden md:flex gap-8 text-[10px] uppercase tracking-[0.2em] font-medium text-white/60">
           <button 
             onClick={() => { setMode('training'); }}
-            className={cn("transition-colors", mode === 'training' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
+            className={cn("transition-colors font-display", mode === 'training' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
           >
             APERTURAS
           </button>
@@ -359,7 +372,7 @@ export default function App() {
                setMode('simulation');
                if (selectedOpening) setSelectedOpening(null);
              }}
-             className={cn("transition-colors", mode === 'simulation' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
+             className={cn("transition-colors font-display", mode === 'simulation' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
           >
             SIMULACIÓN
           </button>
@@ -368,12 +381,12 @@ export default function App() {
               setMode('analysis');
               if (selectedOpening) setSelectedOpening(null);
             }}
-            className={cn("transition-colors", mode === 'analysis' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
+            className={cn("transition-colors font-display", mode === 'analysis' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
           >
             ANÁLISIS
           </button>
-          <a href="/blog.html" className="hover:text-[#D4AF37] transition-colors leading-none pt-1">BLOG</a>
-          <a href="/quienes-somos.html" className="hover:text-[#D4AF37] transition-colors leading-none pt-1">NOSOTROS</a>
+          <a href="/blog.html" className="font-display hover:text-[#D4AF37] transition-colors leading-none pt-1">BLOG</a>
+          <a href="/quienes-somos.html" className="font-display hover:text-[#D4AF37] transition-colors leading-none pt-1">NOSOTROS</a>
         </nav>
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
@@ -735,29 +748,47 @@ export default function App() {
         </aside>
       </main>
 
-      {/* Bottom Status Bar */}
-      <footer className="h-10 bg-[#0F0F12] border-t border-white/10 flex items-center justify-between px-8 text-[9px] uppercase tracking-[0.2em] flex-shrink-0">
-        <div className="flex gap-6 items-center">
-          <div className="text-white/30 flex items-center gap-2">
-            AJEDREZ MASTER <span className="opacity-50">© 2026</span>
+      {/* Bottom Status Bar: MISSION CONTROL */}
+      <footer className="h-12 bg-[#050507] border-t border-white/5 flex items-center justify-between px-8 text-[8px] uppercase tracking-[0.25em] flex-shrink-0 font-mono">
+        <div className="flex gap-8 items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+            <span className="text-white/40 font-display font-bold text-[10px]">JAQUEMATE MISSION_CONTROL</span>
           </div>
-          <div className="text-white/20 hidden sm:block border-l border-white/10 pl-6">
-            DESARROLLADO POR <span className="text-white/40 font-bold">PATRICIO CIFUENTES</span>
+          <div className="hidden lg:flex items-center gap-6 border-l border-white/5 pl-8">
+            <div className="flex flex-col">
+              <span className="text-white/20 text-[7px]">OPERADOR</span>
+              <span className="text-white/60">PATRICIO_CIFUENTES</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-white/20 text-[7px]">SISTEMA</span>
+              <span className="text-emerald-500/80">ONLINE</span>
+            </div>
           </div>
         </div>
-        <div className="flex gap-8 items-center">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-white/30">Métrica de Retención:</span>
-              <span className="text-[#D4AF37] font-mono">84%</span>
+        
+        <div className="flex gap-10 items-center">
+          <div className="hidden sm:flex items-center gap-8">
+            <div className="flex flex-col items-end">
+              <span className="text-white/20 text-[7px]">RETENCIÓN_D30</span>
+              <span className="text-[#D4AF37] tabular-nums">84.21%</span>
             </div>
-            <div className="flex items-center gap-2 text-[#D4AF37]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse"></span>
-              <span>Cloud Engine v10.0.2</span>
+            <div className="flex flex-col items-end">
+              <span className="text-white/20 text-[7px]">CLOUD_CORE</span>
+              <span className="text-white/50">v10.0.2_PRO</span>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-white/20 text-[7px]">LATENCIA</span>
+              <span className="text-emerald-500">14ms</span>
             </div>
           </div>
-          <div className="text-white/30 flex items-center gap-2 border-l border-white/10 pl-6">
-            LATENCIA: <span className="text-emerald-500 font-mono">14ms</span>
+          <div className="border-l border-white/10 pl-8 flex items-center gap-4">
+            <span className="text-white/20">© 2026_EST.</span>
+            <div className="flex gap-1">
+              {[1,2,3,4].map(i => (
+                <div key={i} className={cn("w-1 h-3 rounded-[1px]", i < 4 ? "bg-[#D4AF37]/40" : "bg-white/5")}></div>
+              ))}
+            </div>
           </div>
         </div>
       </footer>
