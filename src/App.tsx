@@ -13,6 +13,8 @@ import {
   Lightbulb, 
   ChevronRight, 
   ChevronLeft,
+  ChevronsLeft,
+  ChevronsRight,
   Brain, 
   CheckCircle2, 
   XCircle,
@@ -337,6 +339,54 @@ export default function App() {
     updateThreats(newGame);
   }, [currentMoveIndex, updateThreats, mode, fullHistory, selectedOpening, status]);
 
+  const goToStart = useCallback(() => {
+    const newGame = new Chess();
+    setGame(newGame);
+    setCurrentMoveIndex(0);
+    updateThreats(newGame);
+    setFeedback(null);
+  }, [updateThreats]);
+
+  const goToEnd = useCallback(() => {
+    const history = mode === 'training' ? selectedOpening?.moves : fullHistory;
+    if (!history || history.length === 0) return;
+    
+    const newGame = new Chess();
+    try {
+      for (const m of history) newGame.move(m);
+      setGame(newGame);
+      setCurrentMoveIndex(history.length);
+      updateThreats(newGame);
+      if (mode === 'training') {
+        setStatus('completed');
+        setFeedback("¡Apertura completada!");
+      }
+    } catch (e) {
+      console.error("Navigation error", e);
+    }
+  }, [mode, selectedOpening, fullHistory, updateThreats]);
+
+  const [isAperturasOpen, setIsAperturasOpen] = useState(false);
+  const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in the textarea
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
+        return;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        stepBackward();
+      } else if (e.key === 'ArrowRight') {
+        stepForward();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [stepBackward, stepForward]);
+
   return (
     <div className="h-screen bg-[#0A0A0C] text-[#E0E0E0] flex flex-col font-sans overflow-hidden">
       {/* Header Navigation */}
@@ -360,31 +410,7 @@ export default function App() {
           </div>
           <h1 className="text-xl font-display font-extrabold uppercase tracking-widest text-[#D4AF37]">Jaquemate</h1>
         </button>
-        <nav className="hidden md:flex gap-8 text-[10px] uppercase tracking-[0.2em] font-medium text-white/60">
-          <button 
-            onClick={() => { setMode('training'); }}
-            className={cn("transition-colors font-display", mode === 'training' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
-          >
-            APERTURAS
-          </button>
-          <button 
-             onClick={() => {
-               setMode('simulation');
-               if (selectedOpening) setSelectedOpening(null);
-             }}
-             className={cn("transition-colors font-display", mode === 'simulation' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
-          >
-            SIMULACIÓN
-          </button>
-          <button 
-            onClick={() => {
-              setMode('analysis');
-              if (selectedOpening) setSelectedOpening(null);
-            }}
-            className={cn("transition-colors font-display", mode === 'analysis' ? "text-[#D4AF37] border-b border-[#D4AF37] pb-1" : "hover:text-[#D4AF37]")}
-          >
-            ANÁLISIS
-          </button>
+        <nav className="hidden md:flex gap-8 text-[10px] uppercase tracking-[0.2em] font-medium text-white/40">
           <a href="/blog.html" className="font-display hover:text-[#D4AF37] transition-colors leading-none pt-1">BLOG</a>
           <a href="/quienes-somos.html" className="font-display hover:text-[#D4AF37] transition-colors leading-none pt-1">NOSOTROS</a>
         </nav>
@@ -403,96 +429,134 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex overflow-hidden">
-        {/* Sidebar: Repertoire Selection */}
-        {mode !== 'simulation' && (
-          <aside className="w-72 border-r border-white/10 bg-[#0C0C0E] flex flex-col flex-shrink-0">
-            <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
-              {mode === 'analysis' ? (
-                <div className="space-y-4">
-                  <h2 className="text-[11px] uppercase tracking-widest text-[#D4AF37] mb-4 font-bold flex items-center gap-2">
-                    <Zap className="w-3 h-3" /> Cargar Partida (PGN)
-                  </h2>
-                  <textarea
-                    value={pgnInput}
-                    onChange={(e) => setPgnInput(e.target.value)}
-                    placeholder="Pega aquí el PGN de la partida..."
-                    className="w-full h-48 bg-white/5 border border-white/10 rounded-sm p-3 text-[10px] font-mono text-white/70 focus:outline-none focus:border-[#D4AF37]/50 transition-colors resize-none"
-                  />
-                  
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => loadPgn()}
-                      className="flex-1 py-2 bg-[#D4AF37] text-black text-[10px] uppercase font-bold tracking-widest rounded-sm hover:brightness-110"
-                    >
-                      Importar Texto
-                    </button>
-                    <label className="flex-1 py-2 bg-white/5 border border-white/10 text-white text-[10px] uppercase font-bold tracking-widest rounded-sm hover:bg-white/10 cursor-pointer flex items-center justify-center gap-2">
-                      <Upload className="w-3 h-3" />
-                      Subir Archivo
-                      <input 
-                        type="file" 
-                        accept=".pgn" 
-                        onChange={handleFileUpload} 
-                        className="hidden" 
-                      />
-                    </label>
+        {/* Primary Vertical Menu */}
+        <nav className="w-16 border-r border-white/10 bg-[#050507] flex flex-col items-center py-12 gap-20 flex-shrink-0 z-50">
+          <button 
+            onClick={() => {
+              setMode('simulation');
+              if (selectedOpening) setSelectedOpening(null);
+              setIsAperturasOpen(false);
+              setIsAnalysisOpen(false);
+            }}
+            className={cn(
+              "font-display font-black text-[10px] uppercase tracking-[0.3em] transition-all duration-300 [writing-mode:vertical-lr] rotate-180",
+              mode === 'simulation' ? "text-[#D4AF37]" : "text-white/20 hover:text-white"
+            )}
+          >
+            Simulación
+          </button>
+
+          <div className="relative flex flex-col items-center">
+            <button 
+              onClick={() => {
+                setIsAperturasOpen(!isAperturasOpen);
+                setIsAnalysisOpen(false);
+                if (!isAperturasOpen) setMode('training');
+              }}
+              className={cn(
+                "font-display font-black text-[10px] uppercase tracking-[0.3em] transition-all duration-300 [writing-mode:vertical-lr] rotate-180 flex items-center gap-1",
+                mode === 'training' || isAperturasOpen ? "text-[#D4AF37]" : "text-white/20 hover:text-white"
+              )}
+            >
+              Aperturas
+              <ChevronRight className={cn("w-3 h-3 transition-transform duration-300 -rotate-90", isAperturasOpen && "rotate-90")} />
+            </button>
+
+            {/* Dropdown Menu for Aperturas */}
+            <AnimatePresence>
+              {isAperturasOpen && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="absolute left-[100%] top-0 ml-4 w-64 bg-[#0C0C0E] border border-white/10 shadow-[20px_0_50px_rgba(0,0,0,0.5)] z-50 py-4 custom-scrollbar max-h-[70vh] overflow-y-auto rounded-sm backdrop-blur-xl"
+                >
+                  <div className="px-6 py-2 border-b border-white/5 mb-4">
+                    <h2 className="text-[9px] uppercase tracking-widest text-white/30 font-bold">Mis Repertorios</h2>
                   </div>
-                  <div className="pt-4 border-t border-white/5">
-                    <p className="text-[9px] text-white/30 uppercase leading-relaxed italic">
-                      Usa este modo para analizar tus propias partidas o de Grandes Maestros. Podrás navegar por cada movimiento y estudiar las líneas teóricas.
-                    </p>
-                  </div>
-                </div>
-              ) : mode === 'training' ? (
-                <>
-                  <h2 className="text-[11px] uppercase tracking-widest text-white/50 mb-6 font-bold flex items-center gap-2">
-                    <BookOpen className="w-3 h-3" /> Mis Aperturas
-                  </h2>
-                  <div className="space-y-3">
+                  <div className="px-3 space-y-1">
                     {OPENINGS.map((op) => (
-                      <div
+                      <button
                         key={op.id}
-                        onClick={() => startTraining(op)}
+                        onClick={() => {
+                          startTraining(op);
+                          setIsAperturasOpen(false);
+                        }}
                         className={cn(
-                          "p-3 rounded-lg cursor-pointer transition-all duration-300 border group",
+                          "w-full text-left p-3 rounded-sm transition-all duration-200 flex flex-col gap-1 group",
                           selectedOpening?.id === op.id 
-                            ? "bg-white/5 border-[#D4AF37]/30" 
-                            : "hover:bg-white/5 border-transparent"
+                            ? "bg-[#D4AF37]/10 border border-[#D4AF37]/30" 
+                            : "hover:bg-white/5 border border-transparent"
                         )}
                       >
-                        <p className={cn(
-                          "text-xs font-serif italic mb-0.5 group-hover:text-[#D4AF37] transition-colors",
-                          selectedOpening?.id === op.id ? "text-[#D4AF37]" : "text-white/80"
+                        <span className={cn(
+                          "text-[11px] font-serif italic transition-colors",
+                          selectedOpening?.id === op.id ? "text-[#D4AF37]" : "text-white/70 group-hover:text-white"
                         )}>
                           {op.name}
-                        </p>
-                        <p className="text-[10px] text-white/40 uppercase tracking-tighter">{op.moves.length} Movimientos</p>
-                        <div className="mt-2 w-full bg-white/10 h-1 rounded-full overflow-hidden">
-                          <div 
-                            className="bg-[#D4AF37] h-full transition-all duration-1000 ease-out" 
-                            style={{ 
-                              width: selectedOpening?.id === op.id 
-                                ? `${(currentMoveIndex / op.moves.length) * 100}%` 
-                                : '0%' 
-                            }}
-                          ></div>
-                        </div>
-                      </div>
+                        </span>
+                        <span className="text-[8px] text-white/20 uppercase tracking-tighter">{op.moves.length} PASOS</span>
+                      </button>
                     ))}
                   </div>
-                </>
-              ) : null}
-            </div>
-            {mode === 'training' && selectedOpening && (
-              <div className="p-6 border-t border-white/5 bg-[#0a0a0c]">
-                <h3 className="text-[10px] uppercase tracking-widest text-[#D4AF37] mb-2 font-bold">Resumen Estratégico</h3>
-                <p className="text-[11px] leading-relaxed text-white/40 font-serif italic">
-                  {selectedOpening.description}
-                </p>
-              </div>
-            )}
-          </aside>
-        )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="relative flex flex-col items-center">
+            <button 
+              onClick={() => {
+                setIsAnalysisOpen(!isAnalysisOpen);
+                setIsAperturasOpen(false);
+                if (!isAnalysisOpen) setMode('analysis');
+              }}
+              className={cn(
+                "font-display font-black text-[10px] uppercase tracking-[0.3em] transition-all duration-300 [writing-mode:vertical-lr] rotate-180 flex items-center gap-1",
+                mode === 'analysis' || isAnalysisOpen ? "text-[#D4AF37]" : "text-white/20 hover:text-white"
+              )}
+            >
+              Análisis
+              <ChevronRight className={cn("w-3 h-3 transition-transform duration-300 -rotate-90", isAnalysisOpen && "rotate-90")} />
+            </button>
+
+            {/* Dropdown Menu for Analysis */}
+            <AnimatePresence>
+              {isAnalysisOpen && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="absolute left-[100%] top-0 ml-4 w-72 bg-[#0C0C0E] border border-white/10 shadow-[20px_0_50px_rgba(0,0,0,0.5)] z-50 p-6 rounded-sm backdrop-blur-xl"
+                >
+                  <div className="space-y-4">
+                    <h2 className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-bold flex items-center gap-2">
+                      <Zap className="w-3 h-3" /> Cargar PGN
+                    </h2>
+                    <textarea
+                      value={pgnInput}
+                      onChange={(e) => setPgnInput(e.target.value)}
+                      placeholder="Pega aquí el PGN..."
+                      className="w-full h-32 bg-white/5 border border-white/10 rounded-sm p-3 text-[10px] font-mono text-white/70 focus:outline-none focus:border-[#D4AF37]/50 transition-colors resize-none"
+                    />
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => { loadPgn(); setIsAnalysisOpen(false); }}
+                        className="w-full py-2 bg-[#D4AF37] text-black text-[9px] uppercase font-black tracking-widest rounded-sm hover:brightness-110"
+                      >
+                        Importar
+                      </button>
+                      <label className="w-full py-2 bg-white/5 border border-white/10 text-white text-[9px] uppercase font-black tracking-widest rounded-sm hover:bg-white/10 cursor-pointer flex items-center justify-center gap-2">
+                        <Upload className="w-3 h-3" /> Subir
+                        <input type="file" accept=".pgn" onChange={(e) => { handleFileUpload(e); setIsAnalysisOpen(false); }} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </nav>
 
         {/* Central Training Zone */}
         <section className="flex-1 flex flex-col items-center justify-center bg-[#08080A] relative p-8">
@@ -623,30 +687,54 @@ export default function App() {
         {/* Right Panel: Analysis & Stats */}
         <aside className="w-80 border-l border-white/10 bg-[#0C0C0E] flex flex-col flex-shrink-0">
           <div className="p-6 flex-1 overflow-hidden flex flex-col">
-            <h2 className="text-[11px] uppercase tracking-widest text-white/50 mb-6 font-bold flex items-center justify-between">
+            <h2 className="text-[11px] uppercase tracking-widest text-white/50 mb-4 font-bold flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <span>Secuencia de Movimientos</span>
-                <span className="text-[#D4AF37] font-mono">{selectedOpening ? `${currentMoveIndex}` : '0'}</span>
+                <span className="text-[#D4AF37] font-mono">{mode === 'training' ? currentMoveIndex : currentMoveIndex}</span>
               </span>
-              <div className="flex gap-1">
-                <button 
-                  onClick={stepBackward}
-                  disabled={currentMoveIndex === 0}
-                  className="p-1 hover:bg-white/5 rounded-sm disabled:opacity-20 transition-colors"
-                  title="Retroceder"
-                >
-                  <ChevronLeft className="w-3 h-3 text-[#D4AF37]" />
-                </button>
-                <button 
-                  onClick={stepForward}
-                  disabled={!selectedOpening || currentMoveIndex >= selectedOpening.moves.length}
-                  className="p-1 hover:bg-white/5 rounded-sm disabled:opacity-20 transition-colors"
-                  title="Avanzar"
-                >
-                  <ChevronRight className="w-3 h-3 text-[#D4AF37]" />
-                </button>
-              </div>
             </h2>
+
+            {/* Chess.com style Navigation Bar */}
+            <div className="flex items-center bg-white/5 border border-white/10 rounded-sm mb-6 overflow-hidden">
+              <button 
+                onClick={goToStart}
+                disabled={currentMoveIndex === 0}
+                className="flex-1 py-1.5 flex items-center justify-center hover:bg-white/5 disabled:opacity-20 transition-colors border-r border-white/10 text-white/60 hover:text-white"
+                title="Inicio"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={stepBackward}
+                disabled={currentMoveIndex === 0}
+                className="flex-1 py-1.5 flex items-center justify-center hover:bg-white/5 disabled:opacity-20 transition-colors border-r border-white/10 text-white/60 hover:text-white"
+                title="Anterior"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={stepForward}
+                disabled={
+                  (mode === 'training' && (!selectedOpening || currentMoveIndex >= selectedOpening.moves.length)) ||
+                  (mode !== 'training' && currentMoveIndex >= fullHistory.length)
+                }
+                className="flex-1 py-1.5 flex items-center justify-center hover:bg-white/5 disabled:opacity-20 transition-colors border-r border-white/10 text-white/60 hover:text-white"
+                title="Siguiente"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={goToEnd}
+                disabled={
+                  (mode === 'training' && (!selectedOpening || currentMoveIndex >= selectedOpening.moves.length)) ||
+                  (mode !== 'training' && (fullHistory.length === 0 || currentMoveIndex >= fullHistory.length))
+                }
+                className="flex-1 py-1.5 flex items-center justify-center hover:bg-white/5 disabled:opacity-20 transition-colors text-white/60 hover:text-white"
+                title="Final"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
             
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-1 font-mono text-xs">
               {mode !== 'training' || !selectedOpening ? (
