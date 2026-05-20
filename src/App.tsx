@@ -36,7 +36,9 @@ export default function App() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [threats, setThreats] = useState<string[]>([]);
-  const [mode, setMode] = useState<'training' | 'simulation' | 'analysis'>('simulation');
+  const [mode, setMode] = useState<'training' | 'simulation' | 'analysis' | 'ai-play'>('simulation');
+  const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
+  const [aiDifficulty, setAiDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [pgnInput, setPgnInput] = useState('');
   const [fullHistory, setFullHistory] = useState<string[]>([]);
   const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>('white');
@@ -221,6 +223,28 @@ export default function App() {
   function onDrop(sourceSquare: string, targetSquare: string) {
     if (status === 'completed' && mode === 'training') return false;
 
+    if (mode === 'ai-play') {
+      const isPlayerTurn = game.turn() === (playerColor === 'white' ? 'w' : 'b');
+      if (!isPlayerTurn || game.isGameOver()) return false;
+
+      const newGame = new Chess();
+      const historyToLoad = fullHistory.slice(0, currentMoveIndex);
+      for (const m of historyToLoad) newGame.move(m);
+
+      try {
+        const move = newGame.move({ from: sourceSquare, to: targetSquare, promotion: 'q' });
+        if (move) {
+          const nextHistory = [...historyToLoad, move.san];
+          setFullHistory(nextHistory);
+          setGame(newGame);
+          setCurrentMoveIndex(nextHistory.length);
+          updateThreats(newGame);
+          setEngineSuggestion(null);
+          return true;
+        }
+      } catch (e) { return false; }
+    }
+
     if (mode === 'simulation' || mode === 'analysis') {
       const newGame = new Chess();
       // Important: load based on progress up to currentMoveIndex
@@ -397,6 +421,68 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [stepBackward, stepForward]);
 
+  // Efecto para controlar la jugada de la IA en el modo "Contra el Bot"
+  useEffect(() => {
+    if (mode === 'ai-play' && engineReady && !game.isGameOver()) {
+      const isBotTurn = game.turn() !== (playerColor === 'white' ? 'w' : 'b');
+      if (isBotTurn) {
+        setIsThinking(true);
+        
+        stockfishWorker.onmessage = (event: MessageEvent) => {
+          const line = event.data;
+          
+          if (line.includes('score cp')) {
+            const cpMatch = line.match(/score cp (-?\d+)/);
+            if (cpMatch) {
+              const cp = parseInt(cpMatch[1]);
+              setEvaluationScore(cp);
+            }
+          } else if (line.includes('score mate')) {
+            const mateMatch = line.match(/score mate (-?\d+)/);
+            if (mateMatch) {
+              const m = parseInt(mateMatch[1]);
+              setEvaluationScore(m > 0 ? 1000 : -1000);
+            }
+          }
+
+          if (line.includes('bestmove')) {
+            const parts = line.split(' ');
+            const bestMove = parts[1];
+            setIsThinking(false);
+
+            if (bestMove && bestMove !== '(none)') {
+              const from = bestMove.substring(0, 2);
+              const to = bestMove.substring(2, 4);
+              const promotion = bestMove.length > 4 ? bestMove[4] : 'q';
+              
+              const newGame = new Chess();
+              const historyToLoad = fullHistory.slice(0, currentMoveIndex);
+              for (const m of historyToLoad) newGame.move(m);
+              
+              try {
+                const moveResult = newGame.move({ from, to, promotion });
+                if (moveResult) {
+                  const nextHistory = [...historyToLoad, moveResult.san];
+                  setFullHistory(nextHistory);
+                  setGame(newGame);
+                  setCurrentMoveIndex(nextHistory.length);
+                  updateThreats(newGame);
+                }
+              } catch (err) {
+                console.error("Error making engine move:", err);
+              }
+            }
+          }
+        };
+
+        stockfishWorker.postMessage('ucinewgame');
+        stockfishWorker.postMessage(`position fen ${game.fen()}`);
+        const depth = aiDifficulty === 'easy' ? 4 : aiDifficulty === 'medium' ? 8 : 12;
+        stockfishWorker.postMessage(`go depth ${depth}`);
+      }
+    }
+  }, [game, mode, engineReady, playerColor, stockfishWorker, aiDifficulty, fullHistory, currentMoveIndex, updateThreats]);
+
   useEffect(() => {
     if ((mode === 'simulation' || mode === 'analysis') && engineReady) {
       getEngineAdvice();
@@ -439,7 +525,7 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 flex overflow-hidden">
         {/* Primary Vertical Menu */}
-        <nav className="w-16 border-r border-white/10 bg-[#050507] flex flex-col items-center py-12 gap-16 flex-shrink-0 z-50">
+        <nav className="w-16 border-r border-white/10 bg-[#050507] flex flex-col items-center py-8 gap-10 xl:gap-14 flex-shrink-0 z-50">
           <button 
             onClick={() => {
               setMode('simulation');
@@ -668,6 +754,23 @@ export default function App() {
               )}
             </AnimatePresence>
           </div>
+
+          <button 
+            onClick={() => {
+              setMode('ai-play');
+              if (selectedOpening) setSelectedOpening(null);
+              setIsAperturasOpen(false);
+              setIsJaquemateOpen(false);
+              setIsAnalysisOpen(false);
+              setBoardOrientation(playerColor);
+            }}
+            className={cn(
+              "font-display font-black text-[10px] uppercase tracking-[0.3em] transition-all duration-300 [writing-mode:vertical-lr] rotate-180",
+              mode === 'ai-play' ? "text-[#D4AF37]" : "text-white/20 hover:text-white"
+            )}
+          >
+            Contra Bot
+          </button>
         </nav>
 
         {/* Central Training Zone */}
@@ -702,12 +805,12 @@ export default function App() {
               onClick={resetGame}
               className={cn(
                 "py-3 bg-white/5 border border-white/10 text-white/60 font-bold uppercase tracking-widest text-[11px] rounded-sm hover:bg-white/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2",
-                mode === 'training' ? "w-full" : "px-4"
+                (mode === 'training' || mode === 'ai-play') ? "w-full" : "px-4"
               )}
             >
-              <RotateCcw className="w-3.5 h-3.5" /> {mode === 'training' ? 'Reiniciar Entrenamiento' : 'Vaciar'}
+              <RotateCcw className="w-3.5 h-3.5" /> {mode === 'training' ? 'Reiniciar Entrenamiento' : mode === 'ai-play' ? 'Reiniciar Partida' : 'Vaciar'}
             </button>
-            {mode !== 'training' && (
+            {(mode === 'simulation' || mode === 'analysis') && (
               <button 
                 onClick={getEngineAdvice}
                 disabled={isThinking}
@@ -720,7 +823,7 @@ export default function App() {
           </div>
 
           <AnimatePresence mode="wait">
-            {engineSuggestion && (
+            {engineSuggestion && mode !== 'training' && (
               <motion.div
                 key="engine-suggestion"
                 initial={{ opacity: 0, y: 10 }}
@@ -773,16 +876,7 @@ export default function App() {
             )}
           </AnimatePresence>
             
-            {showHint && selectedOpening && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="mt-4 bg-white/5 px-8 py-2 border border-white/10 rounded-sm"
-              >
-                <span className="text-white/40 text-[10px] uppercase tracking-widest mr-4">Siguiente movimiento</span>
-                <span className="text-[#D4AF37] font-mono font-bold text-base">{selectedOpening.moves[currentMoveIndex]}</span>
-              </motion.div>
-            )}
+
 
             {threats.length > 0 && (
               <motion.div
@@ -882,15 +976,7 @@ export default function App() {
                       <div className="text-[9px] font-mono bg-black/40 border border-white/5 p-2 rounded-sm text-white/60 whitespace-normal break-all">
                         {selectedOpening.moves.join(' → ')}
                       </div>
-                      {mode === 'training' && (
-                        <button
-                          onClick={() => setShowHint(prev => !prev)}
-                          className="w-full mt-2 py-2 bg-white/5 hover:bg-white/10 text-[10px] uppercase tracking-wider font-bold text-white/70 border border-white/10 rounded-sm transition-all flex items-center justify-center gap-2"
-                        >
-                          <Lightbulb className="w-3.5 h-3.5 text-[#D4AF37]" />
-                          {showHint ? 'Ocultar Pista de Jugada' : 'Buscar Pista Estratégica'}
-                        </button>
-                      )}
+
                     </div>
                   </motion.div>
                 ) : (
@@ -903,6 +989,141 @@ export default function App() {
                   </div>
                 )}
               </AnimatePresence>
+            </div>
+          )}
+          
+          {/* Right Column: Contra el Bot mode strategic controls */}
+          {mode === 'ai-play' && (
+            <div className="flex-1 w-full max-w-[420px] flex flex-col">
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3 }}
+                className="w-full bg-[#0D0D11] border border-white/10 p-6 rounded-sm shadow-[0_20px_40px_rgba(0,0,0,0.5)] flex flex-col gap-5 h-full min-h-[460px]"
+              >
+                <div className="border-b border-white/5 pb-4">
+                  <span className="text-[8px] uppercase tracking-[0.25em] text-[#D4AF37] font-black px-2 py-1 bg-[#D4AF37]/10 rounded-sm inline-block mb-3">
+                    DUELO INDIVIDUAL
+                  </span>
+                  <h3 className="text-xl font-serif italic text-white leading-tight font-semibold flex items-center gap-2">
+                    <Cpu className="w-5 h-5 text-[#D4AF37]" /> Contra el Bot (WASM)
+                  </h3>
+                </div>
+
+                {/* Difficulty selectors */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] uppercase font-bold tracking-widest text-white/40">
+                    Nivel del Motor
+                  </h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['easy', 'medium', 'hard'] as const).map((diff) => (
+                      <button
+                        key={diff}
+                        onClick={() => setAiDifficulty(diff)}
+                        className={cn(
+                          "py-2 text-[9px] uppercase tracking-wider font-bold rounded-sm border transition-all",
+                          aiDifficulty === diff
+                            ? "bg-[#D4AF37]/10 border-[#D4AF37] text-[#D4AF37]"
+                            : "bg-white/5 border-white/5 text-white/40 hover:text-white/70"
+                        )}
+                      >
+                        {diff === 'easy' ? 'Fácil' : diff === 'medium' ? 'Medio' : 'Difícil'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Color Selector */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] uppercase font-bold tracking-widest text-white/40">
+                    Jugar como:
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => {
+                        setPlayerColor('white');
+                        setBoardOrientation('white');
+                      }}
+                      className={cn(
+                        "py-2 text-[9px] uppercase tracking-wider font-bold rounded-sm border transition-all flex items-center justify-center gap-2",
+                        playerColor === 'white'
+                          ? "bg-white text-black border-white"
+                          : "bg-white/5 border-white/5 text-white/40 hover:text-white/70"
+                      )}
+                    >
+                      <div className={cn("w-2 h-2 rounded-full", playerColor === 'white' ? "bg-black" : "bg-white")}></div>
+                      Blancas
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPlayerColor('black');
+                        setBoardOrientation('black');
+                      }}
+                      className={cn(
+                        "py-2 text-[9px] uppercase tracking-wider font-bold rounded-sm border transition-all flex items-center justify-center gap-2",
+                        playerColor === 'black'
+                          ? "bg-white text-black border-white"
+                          : "bg-white/5 border-white/5 text-white/40 hover:text-white/70"
+                      )}
+                    >
+                      <div className={cn("w-2 h-2 rounded-full", playerColor === 'black' ? "bg-black" : "bg-white")}></div>
+                      Negras
+                    </button>
+                  </div>
+                </div>
+
+                {/* Game status description */}
+                <div className="p-4 bg-black/40 border border-white/5 rounded-sm space-y-2">
+                  <h4 className="text-[9px] uppercase tracking-wider text-white/40">Estado de la Partida</h4>
+                  <div className="flex items-center gap-3">
+                    {game.isGameOver() ? (
+                      <div className="text-xs font-bold text-emerald-400 flex items-center gap-2">
+                        <Trophy className="w-4 h-4 text-[#D4AF37]" />
+                        {game.isCheckmate() 
+                          ? `Jaque Mate - ¡Ganador: ${game.turn() === 'w' ? 'Negras' : 'Blancas'}!` 
+                          : 'Partida finalizada (Tablas/Empate)'}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-white/80 flex items-center gap-2">
+                        {isThinking ? (
+                          <>
+                            <div className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></div>
+                            <span>Stockfish pensando su jugada...</span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <span>
+                              {game.turn() === (playerColor === 'white' ? 'w' : 'b') 
+                                ? 'Tu turno - Juega un movimiento' 
+                                : 'Esperando movimiento del Bot...'}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Additional controls */}
+                <div className="mt-auto pt-4 border-t border-white/5 flex flex-col gap-2">
+                  <button
+                    onClick={() => {
+                      const newGame = new Chess();
+                      setGame(newGame);
+                      setCurrentMoveIndex(0);
+                      setFullHistory([]);
+                      setThreats([]);
+                      setEngineSuggestion(null);
+                      setFeedback("Nueva partida contra Bot iniciada");
+                      setTimeout(() => setFeedback(null), 2000);
+                    }}
+                    className="w-full py-3 bg-[#D4AF37] text-black text-[10px] uppercase font-bold tracking-wider rounded-sm hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 font-mono"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Nueva Partida Contra Bot
+                  </button>
+                </div>
+              </motion.div>
             </div>
           )}
         </div>
