@@ -525,7 +525,7 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 flex overflow-hidden">
         {/* Primary Vertical Menu */}
-        <nav className="w-16 border-r border-white/10 bg-[#050507] flex flex-col items-center py-8 gap-10 xl:gap-14 flex-shrink-0 z-50">
+        <nav className="w-44 border-r border-white/10 bg-[#050507] flex flex-col items-start py-8 px-6 gap-8 xl:gap-10 flex-shrink-0 z-50">
           <button 
             onClick={() => {
               setMode('simulation');
@@ -535,14 +535,14 @@ export default function App() {
               setIsAnalysisOpen(false);
             }}
             className={cn(
-              "font-display font-black text-[10px] uppercase tracking-[0.3em] transition-all duration-300 [writing-mode:vertical-lr] rotate-180",
+              "font-display font-black text-[10px] uppercase tracking-[0.25em] transition-all duration-300 text-left w-full",
               mode === 'simulation' ? "text-[#D4AF37]" : "text-white/20 hover:text-white"
             )}
           >
             Simulación
           </button>
 
-          <div className="relative flex flex-col items-center">
+          <div className="relative flex flex-col items-start w-full">
             <button 
               onClick={() => {
                 setIsAperturasOpen(!isAperturasOpen);
@@ -551,12 +551,12 @@ export default function App() {
                 if (!isAperturasOpen) setMode('training');
               }}
               className={cn(
-                "font-display font-black text-[10px] uppercase tracking-[0.3em] transition-all duration-300 [writing-mode:vertical-lr] rotate-180 flex items-center gap-1",
+                "font-display font-black text-[10px] uppercase tracking-[0.25em] transition-all duration-300 flex items-center justify-between w-full text-left gap-1",
                 mode === 'training' && selectedOpening?.category === 'opening' || isAperturasOpen ? "text-[#D4AF37]" : "text-white/20 hover:text-white"
               )}
             >
-              Aperturas
-              <ChevronRight className={cn("w-3 h-3 transition-transform duration-300 -rotate-90", isAperturasOpen && "rotate-90")} />
+              <span>Aperturas</span>
+              <ChevronRight className={cn("w-3 h-3 transition-transform duration-300", isAperturasOpen && "rotate-90")} />
             </button>
 
             {/* Dropdown Menu for Aperturas */}
@@ -642,7 +642,7 @@ export default function App() {
             </AnimatePresence>
           </div>
 
-          <div className="relative flex flex-col items-center">
+          <div className="relative flex flex-col items-start w-full">
             <button 
               onClick={() => {
                 setIsJaquemateOpen(!isJaquemateOpen);
@@ -651,12 +651,12 @@ export default function App() {
                 if (!isJaquemateOpen) setMode('training');
               }}
               className={cn(
-                "font-display font-black text-[10px] uppercase tracking-[0.3em] transition-all duration-300 [writing-mode:vertical-lr] rotate-180 flex items-center gap-1",
+                "font-display font-black text-[10px] uppercase tracking-[0.25em] transition-all duration-300 flex items-center justify-between w-full text-left gap-1",
                 mode === 'training' && selectedOpening?.category === 'mate' || isJaquemateOpen ? "text-[#D4AF37]" : "text-white/20 hover:text-white"
               )}
             >
-              Jaquemate
-              <ChevronRight className={cn("w-3 h-3 transition-transform duration-300 -rotate-90", isJaquemateOpen && "rotate-90")} />
+              <span>Jaquemate</span>
+              <ChevronRight className={cn("w-3 h-3 transition-transform duration-300", isJaquemateOpen && "rotate-90")} />
             </button>
 
             {/* Dropdown Menu for Jaquemate Patterns */}
@@ -701,7 +701,7 @@ export default function App() {
             </AnimatePresence>
           </div>
 
-          <div className="relative flex flex-col items-center">
+          <div className="relative flex flex-col items-start w-full">
             <button 
               onClick={() => {
                 setIsAnalysisOpen(!isAnalysisOpen);
@@ -710,12 +710,12 @@ export default function App() {
                 if (!isAnalysisOpen) setMode('analysis');
               }}
               className={cn(
-                "font-display font-black text-[10px] uppercase tracking-[0.3em] transition-all duration-300 [writing-mode:vertical-lr] rotate-180 flex items-center gap-1",
+                "font-display font-black text-[10px] uppercase tracking-[0.25em] transition-all duration-300 flex items-center justify-between w-full text-left gap-1",
                 mode === 'analysis' || isAnalysisOpen ? "text-[#D4AF37]" : "text-white/20 hover:text-white"
               )}
             >
-              Análisis
-              <ChevronRight className={cn("w-3 h-3 transition-transform duration-300 -rotate-90", isAnalysisOpen && "rotate-90")} />
+              <span>Análisis</span>
+              <ChevronRight className={cn("w-3 h-3 transition-transform duration-300", isAnalysisOpen && "rotate-90")} />
             </button>
 
             {/* Dropdown Menu for Analysis */}
@@ -765,7 +765,7 @@ export default function App() {
               setBoardOrientation(playerColor);
             }}
             className={cn(
-              "font-display font-black text-[10px] uppercase tracking-[0.3em] transition-all duration-300 [writing-mode:vertical-lr] rotate-180",
+              "font-display font-black text-[10px] uppercase tracking-[0.25em] transition-all duration-300 text-left w-full",
               mode === 'ai-play' ? "text-[#D4AF37]" : "text-white/20 hover:text-white"
             )}
           >
