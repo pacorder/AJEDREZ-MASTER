@@ -427,6 +427,7 @@ export default function App() {
       const isBotTurn = game.turn() !== (playerColor === 'white' ? 'w' : 'b');
       if (isBotTurn) {
         setIsThinking(true);
+        setEngineSuggestion(null);
         
         stockfishWorker.onmessage = (event: MessageEvent) => {
           const line = event.data;
@@ -805,7 +806,7 @@ export default function App() {
               onClick={resetGame}
               className={cn(
                 "py-3 bg-white/5 border border-white/10 text-white/60 font-bold uppercase tracking-widest text-[11px] rounded-sm hover:bg-white/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2",
-                (mode === 'training' || mode === 'ai-play') ? "w-full" : "px-4"
+                mode === 'training' ? "w-full" : "px-4"
               )}
             >
               <RotateCcw className="w-3.5 h-3.5" /> {mode === 'training' ? 'Reiniciar Entrenamiento' : mode === 'ai-play' ? 'Reiniciar Partida' : 'Vaciar'}
@@ -818,6 +819,16 @@ export default function App() {
               >
                 <Cpu className={cn("w-3.5 h-3.5", isThinking && "animate-spin")} /> 
                 {isThinking ? 'Analizando...' : 'Consultar Stockfish (WASM)'}
+              </button>
+            )}
+            {mode === 'ai-play' && (
+              <button 
+                onClick={getEngineAdvice}
+                disabled={isThinking || game.isGameOver()}
+                className="flex-1 px-4 py-3 bg-[#D4AF37] text-black font-bold uppercase tracking-widest text-[11px] rounded-sm hover:brightness-110 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20"
+              >
+                <Lightbulb className={cn("w-3.5 h-3.5", isThinking && "animate-pulse")} /> 
+                {isThinking ? 'Pensando...' : 'Pistas'}
               </button>
             )}
           </div>
@@ -1104,6 +1115,17 @@ export default function App() {
                     )}
                   </div>
                 </div>
+
+                {!game.isGameOver() && (
+                  <button
+                    onClick={getEngineAdvice}
+                    disabled={isThinking}
+                    className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 text-[10px] uppercase font-bold tracking-wider rounded-sm transition-all flex items-center justify-center gap-2 font-mono"
+                  >
+                    <Lightbulb className="w-3.5 h-3.5 text-[#D4AF37]" />
+                    {isThinking ? 'Pensando...' : 'Pistas'}
+                  </button>
+                )}
 
                 {/* Additional controls */}
                 <div className="mt-auto pt-4 border-t border-white/5 flex flex-col gap-2">
