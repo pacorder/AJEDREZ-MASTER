@@ -36,7 +36,7 @@ export default function App() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [threats, setThreats] = useState<string[]>([]);
-  const [mode, setMode] = useState<'training' | 'simulation' | 'analysis'>('training');
+  const [mode, setMode] = useState<'training' | 'simulation' | 'analysis'>('simulation');
   const [pgnInput, setPgnInput] = useState('');
   const [fullHistory, setFullHistory] = useState<string[]>([]);
   const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>('white');
@@ -45,6 +45,7 @@ export default function App() {
   // Estado para el Worker de Stockfish y su disponibilidad
   const [stockfishWorker, setStockfishWorker] = useState<Worker | null>(null);
   const [engineReady, setEngineReady] = useState(false);
+  const [evaluationScore, setEvaluationScore] = useState<number>(0); // Centipawns
 
   // Inicializar Worker de Stockfish con técnica de Blob para evitar CORS
   useEffect(() => {
@@ -96,6 +97,7 @@ export default function App() {
         if (cpMatch) {
           const cp = parseInt(cpMatch[1]);
           const evaluation = (cp / 100).toFixed(2);
+          setEvaluationScore(cp);
           setEngineSuggestion(prev => ({ 
             ...prev, 
             evaluation: (cp > 0 ? '+' : '') + evaluation,
@@ -105,6 +107,8 @@ export default function App() {
       } else if (line.includes('score mate')) {
         const mateMatch = line.match(/score mate (-?\d+)/);
         if (mateMatch) {
+          const m = parseInt(mateMatch[1]);
+          setEvaluationScore(m > 0 ? 1000 : -1000);
           setEngineSuggestion(prev => ({
             ...prev,
             evaluation: `M${mateMatch[1]}`,
@@ -192,7 +196,7 @@ export default function App() {
 
   // Initialize training
   const startTraining = (opening: Opening) => {
-    const newGame = new Chess();
+    const newGame = opening.initialFen ? new Chess(opening.initialFen) : new Chess();
     setGame(newGame);
     setSelectedOpening(opening);
     setCurrentMoveIndex(0);
@@ -204,7 +208,7 @@ export default function App() {
   };
 
   const resetGame = () => {
-    const newGame = new Chess();
+    const newGame = selectedOpening?.initialFen ? new Chess(selectedOpening.initialFen) : new Chess();
     setGame(newGame);
     setCurrentMoveIndex(0);
     setFullHistory([]);
@@ -242,7 +246,7 @@ export default function App() {
     const moveString = selectedOpening.moves[currentMoveIndex];
 
     try {
-      const newGame = new Chess();
+      const newGame = selectedOpening.initialFen ? new Chess(selectedOpening.initialFen) : new Chess();
       // For training, we follow the opening moves
       const historyToLoad = selectedOpening.moves.slice(0, currentMoveIndex);
       for (const m of historyToLoad) newGame.move(m);
@@ -287,7 +291,7 @@ export default function App() {
       if (!selectedOpening || currentMoveIndex >= selectedOpening.moves.length) return;
       
       const moveString = selectedOpening.moves[currentMoveIndex];
-      const newGame = new Chess();
+      const newGame = selectedOpening.initialFen ? new Chess(selectedOpening.initialFen) : new Chess();
       const historyToLoad = selectedOpening.moves.slice(0, currentMoveIndex);
       for (const m of historyToLoad) newGame.move(m);
       try {
@@ -324,9 +328,12 @@ export default function App() {
   const stepBackward = useCallback(() => {
     if (currentMoveIndex <= 0) return;
     const nextIndex = currentMoveIndex - 1;
-    const newGame = new Chess();
     const history = mode === 'training' ? selectedOpening?.moves : fullHistory;
     if (!history) return;
+
+    const newGame = (mode === 'training' && selectedOpening?.initialFen) 
+      ? new Chess(selectedOpening.initialFen) 
+      : new Chess();
 
     for (let i = 0; i < nextIndex; i++) {
       newGame.move(history[i]);
@@ -351,7 +358,9 @@ export default function App() {
     const history = mode === 'training' ? selectedOpening?.moves : fullHistory;
     if (!history || history.length === 0) return;
     
-    const newGame = new Chess();
+    const newGame = (mode === 'training' && selectedOpening?.initialFen) 
+      ? new Chess(selectedOpening.initialFen) 
+      : new Chess();
     try {
       for (const m of history) newGame.move(m);
       setGame(newGame);
@@ -367,6 +376,7 @@ export default function App() {
   }, [mode, selectedOpening, fullHistory, updateThreats]);
 
   const [isAperturasOpen, setIsAperturasOpen] = useState(false);
+  const [isJaquemateOpen, setIsJaquemateOpen] = useState(false);
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
 
   useEffect(() => {
@@ -387,6 +397,12 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [stepBackward, stepForward]);
 
+  useEffect(() => {
+    if ((mode === 'simulation' || mode === 'analysis') && engineReady) {
+      getEngineAdvice();
+    }
+  }, [game, mode, engineReady, getEngineAdvice]);
+
   return (
     <div className="h-screen bg-[#0A0A0C] text-[#E0E0E0] flex flex-col font-sans overflow-hidden">
       {/* Header Navigation */}
@@ -402,6 +418,9 @@ export default function App() {
             setEngineSuggestion(null);
             setFullHistory([]);
             setBoardOrientation('white');
+            setIsAperturasOpen(false);
+            setIsJaquemateOpen(false);
+            setIsAnalysisOpen(false);
           }}
           className="flex items-center gap-4 hover:opacity-80 transition-opacity"
         >
@@ -414,28 +433,19 @@ export default function App() {
           <a href="/blog.html" className="font-display hover:text-[#D4AF37] transition-colors leading-none pt-1">BLOG</a>
           <a href="/quienes-somos.html" className="font-display hover:text-[#D4AF37] transition-colors leading-none pt-1">NOSOTROS</a>
         </nav>
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <p className="text-[10px] text-white/40 uppercase tracking-tighter">Estado</p>
-            <p className="text-sm font-mono text-[#D4AF37]">
-              {status === 'completed' ? 'DOMINADO' : 'EN PROGRESO'}
-            </p>
-          </div>
-          <div className="w-10 h-10 rounded-full border border-white/20 bg-white/5 flex items-center justify-center">
-            <CheckCircle2 className={cn("w-5 h-5 transition-colors", status === 'completed' ? "text-emerald-500" : "text-white/20")} />
-          </div>
-        </div>
+        <div className="w-10 h-10 hidden sm:block" />
       </header>
 
       {/* Main Content Area */}
       <main className="flex-1 flex overflow-hidden">
         {/* Primary Vertical Menu */}
-        <nav className="w-16 border-r border-white/10 bg-[#050507] flex flex-col items-center py-12 gap-20 flex-shrink-0 z-50">
+        <nav className="w-16 border-r border-white/10 bg-[#050507] flex flex-col items-center py-12 gap-16 flex-shrink-0 z-50">
           <button 
             onClick={() => {
               setMode('simulation');
               if (selectedOpening) setSelectedOpening(null);
               setIsAperturasOpen(false);
+              setIsJaquemateOpen(false);
               setIsAnalysisOpen(false);
             }}
             className={cn(
@@ -450,12 +460,13 @@ export default function App() {
             <button 
               onClick={() => {
                 setIsAperturasOpen(!isAperturasOpen);
+                setIsJaquemateOpen(false);
                 setIsAnalysisOpen(false);
                 if (!isAperturasOpen) setMode('training');
               }}
               className={cn(
                 "font-display font-black text-[10px] uppercase tracking-[0.3em] transition-all duration-300 [writing-mode:vertical-lr] rotate-180 flex items-center gap-1",
-                mode === 'training' || isAperturasOpen ? "text-[#D4AF37]" : "text-white/20 hover:text-white"
+                mode === 'training' && selectedOpening?.category === 'opening' || isAperturasOpen ? "text-[#D4AF37]" : "text-white/20 hover:text-white"
               )}
             >
               Aperturas
@@ -469,13 +480,18 @@ export default function App() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="absolute left-[100%] top-0 ml-4 w-64 bg-[#0C0C0E] border border-white/10 shadow-[20px_0_50px_rgba(0,0,0,0.5)] z-50 py-4 custom-scrollbar max-h-[70vh] overflow-y-auto rounded-sm backdrop-blur-xl"
+                  className="absolute left-[100%] top-0 ml-4 w-72 bg-[#0C0C0E] border border-white/10 shadow-[20px_0_50px_rgba(0,0,0,0.5)] z-50 py-4 custom-scrollbar max-h-[70vh] overflow-y-auto rounded-sm backdrop-blur-xl"
                 >
-                  <div className="px-6 py-2 border-b border-white/5 mb-4">
-                    <h2 className="text-[9px] uppercase tracking-widest text-white/30 font-bold">Mis Repertorios</h2>
+                  <div className="px-6 py-2 border-b border-white/5 mb-2">
+                    <h2 className="text-[9px] uppercase tracking-widest text-[#D4AF37] font-black">Teoría de Aperturas</h2>
                   </div>
-                  <div className="px-3 space-y-1">
-                    {OPENINGS.map((op) => (
+
+                  {/* APERTURAS CON e4 Section */}
+                  <div className="px-6 py-1 bg-white/5 border-y border-white/5 mt-2 mb-1 flex items-center justify-between">
+                    <span className="text-[8px] uppercase tracking-wider text-white/40 font-bold">Aperturas con e4</span>
+                  </div>
+                  <div className="px-3 space-y-1 py-1">
+                    {OPENINGS.filter(op => op.category === 'opening' && op.subCategory === 'e4').map((op) => (
                       <button
                         key={op.id}
                         onClick={() => {
@@ -495,7 +511,102 @@ export default function App() {
                         )}>
                           {op.name}
                         </span>
-                        <span className="text-[8px] text-white/20 uppercase tracking-tighter">{op.moves.length} PASOS</span>
+                        <p className="text-[9px] text-white/40 leading-relaxed font-sans max-h-12 overflow-hidden text-overflow-ellipsis">
+                          {op.description}
+                        </p>
+                        <span className="text-[7px] text-[#D4AF37]/80 font-mono tracking-wider mt-1 uppercase">Inicio: {op.moves.slice(0, 4).join(' ')}...</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* APERTURAS CON d4 Section */}
+                  <div className="px-6 py-1 bg-white/5 border-y border-white/5 mt-3 mb-1 flex items-center justify-between">
+                    <span className="text-[8px] uppercase tracking-wider text-white/40 font-bold">Aperturas con d4</span>
+                  </div>
+                  <div className="px-3 space-y-1 py-1">
+                    {OPENINGS.filter(op => op.category === 'opening' && op.subCategory === 'd4').map((op) => (
+                      <button
+                        key={op.id}
+                        onClick={() => {
+                          startTraining(op);
+                          setIsAperturasOpen(false);
+                        }}
+                        className={cn(
+                          "w-full text-left p-3 rounded-sm transition-all duration-200 flex flex-col gap-1 group",
+                          selectedOpening?.id === op.id 
+                            ? "bg-[#D4AF37]/10 border border-[#D4AF37]/30" 
+                            : "hover:bg-white/5 border border-transparent"
+                        )}
+                      >
+                        <span className={cn(
+                          "text-[11px] font-serif italic transition-colors",
+                          selectedOpening?.id === op.id ? "text-[#D4AF37]" : "text-white/70 group-hover:text-white"
+                        )}>
+                          {op.name}
+                        </span>
+                        <p className="text-[9px] text-white/40 leading-relaxed font-sans max-h-12 overflow-hidden text-overflow-ellipsis">
+                          {op.description}
+                        </p>
+                        <span className="text-[7px] text-[#D4AF37]/80 font-mono tracking-wider mt-1 uppercase">Inicio: {op.moves.slice(0, 4).join(' ')}...</span>
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="relative flex flex-col items-center">
+            <button 
+              onClick={() => {
+                setIsJaquemateOpen(!isJaquemateOpen);
+                setIsAperturasOpen(false);
+                setIsAnalysisOpen(false);
+                if (!isJaquemateOpen) setMode('training');
+              }}
+              className={cn(
+                "font-display font-black text-[10px] uppercase tracking-[0.3em] transition-all duration-300 [writing-mode:vertical-lr] rotate-180 flex items-center gap-1",
+                mode === 'training' && selectedOpening?.category === 'mate' || isJaquemateOpen ? "text-[#D4AF37]" : "text-white/20 hover:text-white"
+              )}
+            >
+              Jaquemate
+              <ChevronRight className={cn("w-3 h-3 transition-transform duration-300 -rotate-90", isJaquemateOpen && "rotate-90")} />
+            </button>
+
+            {/* Dropdown Menu for Jaquemate Patterns */}
+            <AnimatePresence>
+              {isJaquemateOpen && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="absolute left-[100%] top-0 ml-4 w-64 bg-[#0C0C0E] border border-white/10 shadow-[20px_0_50px_rgba(0,0,0,0.5)] z-50 py-4 custom-scrollbar max-h-[70vh] overflow-y-auto rounded-sm backdrop-blur-xl"
+                >
+                  <div className="px-6 py-2 border-b border-white/5 mb-4">
+                    <h2 className="text-[9px] uppercase tracking-widest text-[#D4AF37] font-black">Patrones Jaquemate</h2>
+                  </div>
+                  <div className="px-3 space-y-1">
+                    {OPENINGS.filter(op => op.category === 'mate').map((op) => (
+                      <button
+                        key={op.id}
+                        onClick={() => {
+                          startTraining(op);
+                          setIsJaquemateOpen(false);
+                        }}
+                        className={cn(
+                          "w-full text-left p-3 rounded-sm transition-all duration-200 flex flex-col gap-1 group",
+                          selectedOpening?.id === op.id 
+                            ? "bg-[#D4AF37]/10 border border-[#D4AF37]/30" 
+                            : "hover:bg-white/5 border border-transparent"
+                        )}
+                      >
+                        <span className={cn(
+                          "text-[11px] font-serif italic transition-colors",
+                          selectedOpening?.id === op.id ? "text-[#D4AF37]" : "text-white/70 group-hover:text-white"
+                        )}>
+                          {op.name}
+                        </span>
+                        <span className="text-[8px] text-white/20 uppercase tracking-tighter">FINALES / TÁCTICA</span>
                       </button>
                     ))}
                   </div>
@@ -509,6 +620,7 @@ export default function App() {
               onClick={() => {
                 setIsAnalysisOpen(!isAnalysisOpen);
                 setIsAperturasOpen(false);
+                setIsJaquemateOpen(false);
                 if (!isAnalysisOpen) setMode('analysis');
               }}
               className={cn(
@@ -559,8 +671,11 @@ export default function App() {
         </nav>
 
         {/* Central Training Zone */}
-        <section className="flex-1 flex flex-col items-center justify-center bg-[#08080A] relative p-8">
-          {/* Chess Board Visual */}
+        <section className="flex-1 flex flex-col items-center justify-center bg-[#08080A] relative p-6 overflow-y-auto custom-scrollbar">
+          <div className="flex flex-col xl:flex-row items-center xl:items-stretch justify-center gap-8 w-full max-w-6xl">
+            {/* Left Column: Board and related controls */}
+            <div className="flex flex-col items-center w-full max-w-[540px] flex-shrink-0">
+              {/* Chess Board Visual */}
           <div className="w-full max-w-[540px] aspect-square bg-[#1A1A1E] p-2 shadow-[0_0_50px_rgba(0,0,0,0.8)] rounded-sm ring-1 ring-white/10 relative">
             <Chessboard 
               position={game.fen()} 
@@ -585,18 +700,23 @@ export default function App() {
           <div className="mt-8 flex gap-4 w-full max-w-[540px]">
             <button 
               onClick={resetGame}
-              className="px-4 py-3 bg-white/5 border border-white/10 text-white/60 font-bold uppercase tracking-widest text-[11px] rounded-sm hover:bg-white/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className={cn(
+                "py-3 bg-white/5 border border-white/10 text-white/60 font-bold uppercase tracking-widest text-[11px] rounded-sm hover:bg-white/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2",
+                mode === 'training' ? "w-full" : "px-4"
+              )}
             >
-              <RotateCcw className="w-3.5 h-3.5" /> Vaciar
+              <RotateCcw className="w-3.5 h-3.5" /> {mode === 'training' ? 'Reiniciar Entrenamiento' : 'Vaciar'}
             </button>
-            <button 
-              onClick={getEngineAdvice}
-              disabled={isThinking}
-              className="flex-1 px-4 py-3 bg-[#D4AF37] text-black font-bold uppercase tracking-widest text-[11px] rounded-sm hover:brightness-110 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20"
-            >
-              <Cpu className={cn("w-3.5 h-3.5", isThinking && "animate-spin")} /> 
-              {isThinking ? 'Analizando...' : 'Consultar Stockfish (WASM)'}
-            </button>
+            {mode !== 'training' && (
+              <button 
+                onClick={getEngineAdvice}
+                disabled={isThinking}
+                className="flex-1 px-4 py-3 bg-[#D4AF37] text-black font-bold uppercase tracking-widest text-[11px] rounded-sm hover:brightness-110 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20"
+              >
+                <Cpu className={cn("w-3.5 h-3.5", isThinking && "animate-spin")} /> 
+                {isThinking ? 'Analizando...' : 'Consultar Stockfish (WASM)'}
+              </button>
+            )}
           </div>
 
           <AnimatePresence mode="wait">
@@ -682,7 +802,111 @@ export default function App() {
                 </div>
               </motion.div>
             )}
-        </section>
+          </div>
+
+          {/* Right Column: Strategic explanation box (Visible as selectedOpening is active in training mode) */}
+          {mode === 'training' && (
+            <div className="flex-1 w-full max-w-[420px] flex flex-col">
+              <AnimatePresence mode="wait">
+                {selectedOpening ? (
+                  <motion.div
+                    key={selectedOpening.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.3 }}
+                    className="w-full bg-[#0D0D11] border border-white/10 p-6 rounded-sm shadow-[0_20px_40px_rgba(0,0,0,0.5)] flex flex-col gap-5 h-full min-h-[460px]"
+                  >
+                    <div className="border-b border-white/5 pb-4">
+                      <span className="text-[8px] uppercase tracking-[0.25em] text-[#D4AF37] font-black px-2 py-1 bg-[#D4AF37]/10 rounded-sm inline-block mb-3">
+                        {selectedOpening.category === 'mate' ? 'Patrón de Jaquemate' : `TEORÍA / APERTURA`}
+                      </span>
+                      <h3 className="text-xl font-serif italic text-white leading-tight font-semibold">
+                        {selectedOpening.name}
+                      </h3>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="text-[10px] uppercase font-bold tracking-widest text-white/40 flex items-center gap-2">
+                        <BookOpen className="w-3.5 h-3.5 text-[#D4AF37]" />
+                        Concepto Estratégico
+                      </h4>
+                      <p className="text-xs leading-relaxed text-white/70 font-sans font-normal">
+                        {selectedOpening.description}
+                      </p>
+                    </div>
+
+                    {/* Pros section */}
+                    <div className="space-y-2.5">
+                      <h4 className="text-[10px] uppercase font-bold tracking-widest text-[#50c878] flex items-center gap-2 font-mono">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#50c878]" />
+                        Ventajas / Pros
+                      </h4>
+                      <ul className="space-y-1.5 text-[11px] text-white/85">
+                        {(selectedOpening.pros || []).map((pro, idx) => (
+                          <li key={idx} className="flex items-start gap-2 leading-relaxed">
+                            <span className="text-[#50c878] font-bold select-none">•</span>
+                            <span>{pro}</span>
+                          </li>
+                        ))}
+                        {(!selectedOpening.pros || selectedOpening.pros.length === 0) && (
+                          <li className="text-white/30 italic text-[10px]">Sin pros listados para este patrón.</li>
+                        )}
+                      </ul>
+                    </div>
+
+                    {/* Cons section */}
+                    <div className="space-y-2.5">
+                      <h4 className="text-[10px] uppercase font-bold tracking-widest text-amber-500/90 flex items-center gap-2 font-mono">
+                        <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+                        Inconvenientes / Contras
+                      </h4>
+                      <ul className="space-y-1.5 text-[11px] text-white/85">
+                        {(selectedOpening.cons || []).map((con, idx) => (
+                          <li key={idx} className="flex items-start gap-2 leading-relaxed">
+                            <span className="text-amber-500/90 font-bold select-none">•</span>
+                            <span>{con}</span>
+                          </li>
+                        ))}
+                        {(!selectedOpening.cons || selectedOpening.cons.length === 0) && (
+                          <li className="text-white/30 italic text-[10px]">Sin inconvenientes listados para este patrón.</li>
+                        )}
+                      </ul>
+                    </div>
+
+                    <div className="mt-auto pt-4 border-t border-white/5 flex flex-col gap-2">
+                      <div className="flex items-center justify-between text-[9px] uppercase tracking-wider text-white/30">
+                        <span>Secuencia Teórica</span>
+                        <span className="text-[#D4AF37] font-mono">{selectedOpening.moves.length} jugadas</span>
+                      </div>
+                      <div className="text-[9px] font-mono bg-black/40 border border-white/5 p-2 rounded-sm text-white/60 whitespace-normal break-all">
+                        {selectedOpening.moves.join(' → ')}
+                      </div>
+                      {mode === 'training' && (
+                        <button
+                          onClick={() => setShowHint(prev => !prev)}
+                          className="w-full mt-2 py-2 bg-white/5 hover:bg-white/10 text-[10px] uppercase tracking-wider font-bold text-white/70 border border-white/10 rounded-sm transition-all flex items-center justify-center gap-2"
+                        >
+                          <Lightbulb className="w-3.5 h-3.5 text-[#D4AF37]" />
+                          {showHint ? 'Ocultar Pista de Jugada' : 'Buscar Pista Estratégica'}
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                ) : (
+                  <div className="h-full min-h-[460px] border border-dashed border-white/10 rounded-sm flex flex-col items-center justify-center p-8 text-center text-white/20 gap-3">
+                    <Info className="w-8 h-8 opacity-20" />
+                    <p className="text-xs uppercase tracking-wider font-bold">Ficha de Análisis</p>
+                    <p className="text-[11px] leading-relaxed max-w-[280px]">
+                      Selecciona una teoría de apertura o un patrón de jaquemate en el menú izquierdo para cargar su ficha estratégica completa.
+                    </p>
+                  </div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
+      </section>
 
         {/* Right Panel: Analysis & Stats */}
         <aside className="w-80 border-l border-white/10 bg-[#0C0C0E] flex flex-col flex-shrink-0">
@@ -825,13 +1049,22 @@ export default function App() {
           {/* Game Stats Footer */}
           <div className="p-4 bg-black border-t border-white/10">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] uppercase tracking-[0.2em] text-white/30">Progreso de la Partida</span>
-              <span className="text-[10px] font-mono text-[#D4AF37] tracking-wider">Turno: {game.turn() === 'w' ? 'Blanco' : 'Negro'}</span>
+              <span className="text-[9px] uppercase tracking-[0.2em] text-white/30 text-nowrap">Probabilidad de Victoria</span>
+              <span className="text-[10px] font-mono text-[#D4AF37] tracking-wider whitespace-nowrap">
+                {evaluationScore > 0 ? `B +${(evaluationScore/100).toFixed(1)}` : evaluationScore < 0 ? `N ${(evaluationScore/100).toFixed(1)}` : 'IGUALDAD'}
+              </span>
             </div>
-            <div className="w-full bg-white/5 h-4 relative rounded-full overflow-hidden border border-white/10">
-              <div className="absolute left-0 top-0 bottom-0 bg-white/80 transition-all duration-500" style={{ width: '50%' }}></div>
-              <div className="absolute inset-0 flex items-center justify-center text-[7px] font-bold text-black mix-blend-difference tracking-[0.3em]">EQUILIBRIO ESTRATÉGICO</div>
+            <div className="w-full bg-black/40 h-5 relative rounded-sm overflow-hidden border border-white/10">
+              {/* White advantage bar component */}
+              <motion.div 
+                animate={{ width: `${Math.max(5, Math.min(95, 50 + (evaluationScore / 20)))}%` }}
+                className="absolute left-0 top-0 bottom-0 bg-white/90 transition-all duration-700 ease-in-out"
+              ></motion.div>
+              <div className="absolute inset-0 flex items-center justify-center text-[7px] font-bold text-black mix-blend-difference tracking-[0.3em] uppercase">
+                {evaluationScore > 200 ? 'Ventaja Blanca' : evaluationScore < -200 ? 'Ventaja Negra' : 'Equilibrio'}
+              </div>
             </div>
+            <p className="text-[7px] text-white/20 mt-2 italic text-center">Basado en Stockfish Engine (UCI)</p>
           </div>
         </aside>
       </main>
