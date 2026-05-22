@@ -687,10 +687,6 @@ export default function App() {
           </button>
         </div>
         
-        <nav className="hidden md:flex gap-8 text-[10px] uppercase tracking-[0.2em] font-medium text-white/40">
-          <a href="/blog.html" className="font-display hover:text-[#D4AF37] transition-colors leading-none pt-1">BLOG</a>
-          <a href="/quienes-somos.html" className="font-display hover:text-[#D4AF37] transition-colors leading-none pt-1">NOSOTROS</a>
-        </nav>
         <div className="w-10 h-10 hidden sm:block" />
       </header>
 
@@ -980,6 +976,18 @@ export default function App() {
           >
             Contra Bot
           </button>
+
+          <div className="w-full border-t border-white/5 my-2" />
+
+          <div className="space-y-4 w-full">
+            <span className="text-[7px] uppercase tracking-[0.25em] font-bold text-white/20 block">Información</span>
+            <div className="flex flex-col gap-3 font-display text-[9px] uppercase tracking-[0.25em] text-left">
+              <a href="/blog.html" className="text-white/40 hover:text-[#D4AF37] transition-all">Blog</a>
+              <a href="/quienes-somos.html" className="text-white/40 hover:text-[#D4AF37] transition-all">Nosotros</a>
+              <a href="/politica-de-privacidad.html" className="text-white/40 hover:text-[#D4AF37] transition-all">Privacidad</a>
+              <a href="/contacto.html" className="text-white/40 hover:text-[#D4AF37] transition-all">Contacto</a>
+            </div>
+          </div>
         </nav>
 
         {/* Central Training Zone */}
@@ -1681,7 +1689,7 @@ export default function App() {
           <div className="hidden lg:flex items-center gap-6 border-l border-white/5 pl-8">
             <div className="flex flex-col">
               <span className="text-white/20 text-[7px]">OPERADOR</span>
-              <span className="text-white/60">PATRICIO_CIFUENTES</span>
+              <span className="text-white/60">PATRICIO_CORDERO</span>
             </div>
             <div className="flex flex-col">
               <span className="text-white/20 text-[7px]">SISTEMA</span>
